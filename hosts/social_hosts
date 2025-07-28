@@ -1,0 +1,12 @@
+127.0.0.1 localhost
+::1 localhost
+
+# Social mode allows most social sites but blocks productivity distractors
+# Block work-related sites to enforce social focus
+
+127.0.0.1 github.com
+127.0.0.1 www.github.com
+127.0.0.1 stackoverflow.com
+127.0.0.1 www.stackoverflow.com
+127.0.0.1 stackexchange.com
+127.0.0.1 www.stackexchange.com

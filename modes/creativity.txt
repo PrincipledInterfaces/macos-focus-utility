@@ -6,3 +6,10 @@ blender
 blenderplayer
 REAPER64
 Terminal
+Logic Pro
+Logic Pro X
+Python
+focus_launcher.py
+QtCore
+QtWidgets
+PyQt5

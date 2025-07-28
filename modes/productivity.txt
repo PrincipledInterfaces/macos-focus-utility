@@ -14,4 +14,8 @@ Terminal
 XCode
 Google Chrome
 Chrome
-Firefox
+Python
+focus_launcher.py
+QtCore
+QtWidgets
+PyQt5

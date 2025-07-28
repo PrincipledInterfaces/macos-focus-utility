@@ -4,3 +4,8 @@ FaceTime
 Messages
 Contacts
 Terminal
+Python
+focus_launcher.py
+QtCore
+QtWidgets
+PyQt5
