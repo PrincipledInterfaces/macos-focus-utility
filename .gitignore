@@ -1,0 +1,15 @@
+# API Keys - never commit these!
+groq_api_key.txt
+
+# Logs
+*.log
+active_programs.log
+browser_tabs.log
+
+# System files
+.DS_Store
+__pycache__/
+*.pyc
+
+# Temporary files
+*.tmp
