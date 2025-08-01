@@ -17,9 +17,15 @@ fi
 allowed=$(cat "modes/$mode.txt") #checks for allowed app list in the mode text file
 
 # Essential apps that should never be killed (safety list)
-essential_apps=("Finder" "SystemUIServer" "Dock" "loginwindow" "WindowServer" "Terminal")
+essential_apps=("Finder" "SystemUIServer" "Dock" "loginwindow" "WindowServer" "Terminal" "osascript" "System Events" "Python" "focus_launcher")
 
-running=$(osascript -e 'tell application "System Events" to get name of (every process whose background only is false)') #gets all open apps in a list stored as running
+running=$(osascript -e 'tell application "System Events" to get name of (every process whose background only is false)' 2>/dev/null) #gets all open apps in a list stored as running
+
+# Check if the osascript command failed
+if [ $? -ne 0 ] || [ -z "$running" ]; then
+    echo "Failed to get running apps. Skipping this cycle."
+    exit 0
+fi
 
 # Process the comma-separated list more carefully
 IFS=', ' read -ra RUNNING_APPS <<< "$running"

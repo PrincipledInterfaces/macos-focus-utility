@@ -1,0 +1,1 @@
+# Email Assistant Plugin for Focus Utility

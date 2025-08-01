@@ -1,0 +1,8 @@
+{
+  "name": "Positive Feedback",
+  "version": "1.0.0",
+  "description": "Gives small positive notifications as goal progress is made.",
+  "main_file": "plugin.py",
+  "author": "Matthew Reichard",
+  "permissions": ["notifications"]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "Email Assistant",
+  "version": "1.0.0",
+  "description": "Analyzes important emails and suggests tasks to add to your focus session. Works with any email provider via IMAP.",
+  "main_file": "plugin.py",
+  "author": "Focus Utility",
+  "requires": ["imaplib", "email"],
+  "permissions": ["email_access", "notifications"]
+}

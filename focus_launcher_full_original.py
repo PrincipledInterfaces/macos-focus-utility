@@ -13,75 +13,6 @@ import math
 import json
 import time as time_module
 from datetime import datetime, timedelta
-from typing import List
-
-def get_popup_interval_setting():
-    """Get the popup interval setting from JSON file"""
-    try:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        settings_file = os.path.join(script_dir, 'plugin_settings.json')
-        
-        if os.path.exists(settings_file):
-            with open(settings_file, 'r') as f:
-                settings = json.load(f)
-            return settings.get('app_settings', {}).get('popup_interval_minutes', 1)
-        return 1
-    except Exception:
-        return 1
-
-def stop_focus_mode_with_password():
-    """Stop focus mode, asking for password if needed"""
-    try:
-        import subprocess
-        
-        # Try to determine if we need website blocking cleanup (sudo required)
-        needs_sudo = False
-        try:
-            # Check if we modified hosts file (if current_mode file exists)
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            current_mode_file = os.path.join(script_dir, 'current_mode')
-            if os.path.exists(current_mode_file) and os.path.getsize(current_mode_file) > 0:
-                needs_sudo = True
-        except:
-            pass
-        
-        if needs_sudo:
-            # Ask for password for website blocking cleanup
-            from PyQt5.QtWidgets import QDialog
-            password_dialog = PasswordDialog()
-            password_dialog.setWindowTitle('Cleanup Required')
-            # Update the message to explain why password is needed
-            if password_dialog.exec_() == QDialog.Accepted:
-                password = password_dialog.password
-                
-                # Run cleanup commands with password
-                script_dir = os.path.dirname(os.path.abspath(__file__))
-                
-                # Kill processes first (no sudo needed)
-                subprocess.run(['pkill', '-f', 'kill_looper'], cwd=script_dir, timeout=5)
-                subprocess.run(['pkill', '-f', 'monitor_active'], cwd=script_dir, timeout=5)
-                
-                # Reset hosts file with password
-                try:
-                    hosts_reset = f'echo "{password}" | sudo -S bash -c \'cat > /etc/hosts <<EOF\n127.0.0.1 localhost\n::1 localhost\nEOF\''
-                    subprocess.run(hosts_reset, shell=True, cwd=script_dir, timeout=10)
-                    
-                    # Flush DNS
-                    dns_flush = f'echo "{password}" | sudo -S dscacheutil -flushcache'
-                    subprocess.run(dns_flush, shell=True, cwd=script_dir, timeout=5)
-                except:
-                    pass
-            else:
-                print("Password required for complete cleanup - skipping sudo commands")
-        
-        # Always run the basic cleanup (no sudo required)
-        subprocess.run(['bash', './stop_focus_mode.sh'], 
-                      cwd=os.path.dirname(os.path.abspath(__file__)), 
-                      timeout=10)
-        
-    except Exception as e:
-        print(f"Error during focus mode cleanup: {e}")
-        # Continue anyway - don't let cleanup failures prevent app exit
 
 class TimePickerDialog(QDialog):
     def __init__(self, parent=None):
@@ -92,7 +23,7 @@ class TimePickerDialog(QDialog):
     def init_ui(self):
         self.setWindowTitle('Session Duration')
         self.setFixedSize(400, 250)
-        self.setWindowFlags(Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
         
         # Add shadow effect
         shadow = QGraphicsDropShadowEffect()
@@ -140,56 +71,6 @@ class TimePickerDialog(QDialog):
                 border: 1px solid #d1d1d6;
                 border-radius: 8px;
                 min-width: 60px;
-                background-color: white;
-                color: #1d1d1f;
-            }
-            QSpinBox::up-button {
-                subcontrol-origin: border;
-                subcontrol-position: top right;
-                width: 20px;
-                border-left: 1px solid #d1d1d6;
-                border-bottom: 1px solid #d1d1d6;
-                border-top-right-radius: 8px;
-                background-color: #f8f8f8;
-            }
-            QSpinBox::up-button:hover {
-                background-color: #e8e8e8;
-            }
-            QSpinBox::up-button:pressed {
-                background-color: #d8d8d8;
-            }
-            QSpinBox::up-arrow {
-                image: none;
-                width: 0;
-                height: 0;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-bottom: 6px solid #666;
-                margin-bottom: 2px;
-            }
-            QSpinBox::down-button {
-                subcontrol-origin: border;
-                subcontrol-position: bottom right;
-                width: 20px;
-                border-left: 1px solid #d1d1d6;
-                border-top: 1px solid #d1d1d6;
-                border-bottom-right-radius: 8px;
-                background-color: #f8f8f8;
-            }
-            QSpinBox::down-button:hover {
-                background-color: #e8e8e8;
-            }
-            QSpinBox::down-button:pressed {
-                background-color: #d8d8d8;
-            }
-            QSpinBox::down-arrow {
-                image: none;
-                width: 0;
-                height: 0;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-top: 6px solid #666;
-                margin-top: 2px;
             }
         """)
         
@@ -396,7 +277,6 @@ class GoalsDialog(QDialog):
             else:
                 self.analyzed_goals = result
                 self.used_ai = False
-            
             self.accept()
         except Exception as e:
             print(f"Error in AI analysis: {e}")
@@ -627,33 +507,6 @@ class GoalsReviewDialog(QDialog):
                 border-radius: 8px;
                 background-color: #fafafa;
             }
-            QScrollBar:vertical {
-                border: none;
-                background-color: #f0f0f0;
-                width: 12px;
-                border-radius: 6px;
-                margin: 0;
-            }
-            QScrollBar::handle:vertical {
-                background-color: #c0c0c0;
-                border-radius: 6px;
-                min-height: 20px;
-                margin: 2px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background-color: #a0a0a0;
-            }
-            QScrollBar::handle:vertical:pressed {
-                background-color: #808080;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0px;
-                subcontrol-position: top;
-                subcontrol-origin: margin;
-            }
-            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-                background: none;
-            }
         """)
         
         goals_widget = QWidget()
@@ -727,375 +580,12 @@ class GoalsReviewDialog(QDialog):
         self.approved = True
         self.accept()
 
-class PluginTaskDialog(QDialog):
-    def __init__(self, current_goals, parent=None):
-        super().__init__(parent)
-        self.current_goals = current_goals
-        self.final_goals = current_goals.copy()
-        self.init_ui()
-    
-    def init_ui(self):
-        self.setWindowTitle('Additional Tasks')
-        self.setFixedSize(600, 500)
-        self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
-        
-        # Add shadow effect
-        shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(20)
-        shadow.setColor(QColor(0, 0, 0, 80))
-        shadow.setOffset(0, 10)
-        self.setGraphicsEffect(shadow)
-        
-        self.center_window()
-        
-        self.setStyleSheet("""
-            QDialog {
-                background-color: white;
-                border-radius: 20px;
-            }
-        """)
-        
-        layout = QVBoxLayout()
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setSpacing(20)
-        
-        # Title
-        title = QLabel("Checking for Additional Tasks...")
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("""
-            font-size: 18px;
-            font-weight: 600;
-            color: #1d1d1f;
-        """)
-        layout.addWidget(title)
-        
-        # Status label
-        self.status_label = QLabel("Scanning for important tasks...")
-        self.status_label.setAlignment(Qt.AlignCenter)
-        self.status_label.setWordWrap(True)
-        self.status_label.setStyleSheet("""
-            font-size: 14px;
-            color: #86868b;
-        """)
-        layout.addWidget(self.status_label)
-        
-        # Tasks area (initially hidden)
-        self.tasks_container = QWidget()
-        self.tasks_layout = QVBoxLayout(self.tasks_container)
-        self.tasks_layout.setSpacing(12)
-        
-        layout.addWidget(self.tasks_container)
-        self.tasks_container.hide()
-        
-        # Buttons
-        self.button_layout = QHBoxLayout()
-        
-        self.skip_btn = QPushButton("Skip")
-        self.skip_btn.clicked.connect(self.skip_scan)
-        self.skip_btn.setStyleSheet("""
-            QPushButton {
-                padding: 10px 20px;
-                font-size: 14px;
-                border: 1px solid #d1d1d6;
-                border-radius: 8px;
-                background-color: white;
-            }
-            QPushButton:hover { background-color: #f5f5f7; }
-        """)
-        
-        self.continue_btn = QPushButton("Continue")
-        self.continue_btn.clicked.connect(self.accept)
-        self.continue_btn.setDefault(True)
-        self.continue_btn.setStyleSheet("""
-            QPushButton {
-                padding: 10px 20px;
-                font-size: 14px;
-                font-weight: 600;
-                border: none;
-                border-radius: 8px;
-                background-color: #007aff;
-                color: white;
-            }
-            QPushButton:hover { background-color: #0056cc; }
-        """)
-        self.continue_btn.hide()  # Initially hidden
-        
-        self.button_layout.addStretch()
-        self.button_layout.addWidget(self.skip_btn)
-        self.button_layout.addWidget(self.continue_btn)
-        
-        layout.addLayout(self.button_layout)
-        self.setLayout(layout)
-        
-        # Start plugin task scanning after dialog is shown
-        QTimer.singleShot(500, self.scan_for_tasks)
-    
-    def center_window(self):
-        from PyQt5.QtWidgets import QDesktopWidget
-        qr = self.frameGeometry()
-        cp = QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(qr.topLeft())
-    
-    def scan_for_tasks(self):
-        """Use plugin hooks to scan for additional tasks"""
-        try:
-            from plugin_system import plugin_manager
-            
-            # Call plugin hooks to get additional tasks - plugins return suggested tasks
-            additional_tasks = plugin_manager.call_goals_analyzed_hooks(self.current_goals, "")
-            
-            # Check if any plugins added tasks
-            if len(additional_tasks) > len(self.current_goals):
-                # Some plugins added tasks
-                new_tasks = additional_tasks[len(self.current_goals):]
-                self.show_additional_tasks(new_tasks)
-            else:
-                # No additional tasks found
-                self.show_no_additional_tasks()
-                
-        except Exception as e:
-            print(f"Error scanning for additional tasks: {e}")
-            self.show_no_additional_tasks()
-    
-    def show_additional_tasks(self, new_tasks):
-        """Show additional tasks found by plugins"""
-        self.status_label.setText("Found additional tasks that may be important:")
-        
-        # Create checkboxes for each additional task
-        self.task_checkboxes = []
-        for task in new_tasks:
-            checkbox = QCheckBox()
-            checkbox.setChecked(True)  # Default to checked
-            checkbox.setText(task)
-            checkbox.setStyleSheet("""
-                QCheckBox {
-                    font-size: 14px;
-                    color: #4a4a4a;
-                    spacing: 12px;
-                    padding: 8px 0px;
-                    font-weight: 500;
-                    line-height: 1.4;
-                }
-                QCheckBox::indicator {
-                    width: 18px;
-                    height: 18px;
-                    border-radius: 9px;
-                    border: 2px solid #d1d1d6;
-                    background-color: white;
-                }
-                QCheckBox::indicator:checked {
-                    background-color: #007aff;
-                    border-color: #007aff;
-                }
-            """)
-            self.tasks_layout.addWidget(checkbox)
-            self.task_checkboxes.append((checkbox, task))
-        
-        # Add instruction
-        instruction = QLabel("Select which tasks to add to your focus session:")
-        instruction.setStyleSheet("""
-            font-size: 14px;
-            color: #86868b;
-            margin-bottom: 10px;
-        """)
-        self.tasks_layout.insertWidget(0, instruction)
-        
-        self.tasks_container.show()
-        self.continue_btn.setText("Add Selected & Continue")
-        self.continue_btn.show()
-        self.skip_btn.setText("Skip All")
-    
-    def show_no_additional_tasks(self):
-        self.status_label.setText("No additional tasks found.")
-        self.continue_btn.setText("Continue")
-        self.continue_btn.show()
-    
-    def skip_scan(self):
-        """Skip task scanning and continue with original goals"""
-        self.final_goals = self.current_goals.copy()
-        self.accept()
-    
-    def accept(self):
-        """Accept and add selected tasks to goals"""
-        if hasattr(self, 'task_checkboxes'):
-            # Add selected tasks to the beginning of goals list
-            selected_tasks = []
-            for checkbox, task in self.task_checkboxes:
-                if checkbox.isChecked():
-                    selected_tasks.append(task)
-            
-            # Combine additional tasks with existing goals
-            self.final_goals = selected_tasks + self.current_goals
-        else:
-            # If no checkboxes (no additional tasks found), keep original goals
-            self.final_goals = self.current_goals.copy()
-        
-        super().accept()
-
-class FinalGoalsDialog(QDialog):
-    def __init__(self, final_goals, parent=None):
-        super().__init__(parent)
-        self.final_goals = final_goals
-        self.init_ui()
-    
-    def init_ui(self):
-        self.setWindowTitle('Updated Focus Goals')
-        self.setFixedSize(500, 400)
-        self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
-        
-        # Add shadow effect
-        shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(20)
-        shadow.setColor(QColor(0, 0, 0, 80))
-        shadow.setOffset(0, 10)
-        self.setGraphicsEffect(shadow)
-        
-        self.center_window()
-        
-        self.setStyleSheet("""
-            QDialog {
-                background-color: white;
-                border-radius: 20px;
-            }
-        """)
-        
-        layout = QVBoxLayout()
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setSpacing(20)
-        
-        # Title
-        title = QLabel("Your Complete Focus Plan")
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("""
-            font-size: 18px;
-            font-weight: 600;
-            color: #1d1d1f;
-        """)
-        layout.addWidget(title)
-        
-        # Subtitle
-        subtitle = QLabel("Here are your goals including important email tasks:")
-        subtitle.setAlignment(Qt.AlignCenter)
-        subtitle.setWordWrap(True)
-        subtitle.setStyleSheet("""
-            font-size: 14px;
-            color: #86868b;
-        """)
-        layout.addWidget(subtitle)
-        
-        # Goals display
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("""
-            QScrollArea {
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
-                background-color: #fafafa;
-            }
-            QScrollBar:vertical {
-                border: none;
-                background-color: #f0f0f0;
-                width: 12px;
-                border-radius: 6px;
-                margin: 0;
-            }
-            QScrollBar::handle:vertical {
-                background-color: #c0c0c0;
-                border-radius: 6px;
-                min-height: 20px;
-                margin: 2px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background-color: #a0a0a0;
-            }
-            QScrollBar::handle:vertical:pressed {
-                background-color: #808080;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0px;
-                subcontrol-position: top;
-                subcontrol-origin: margin;
-            }
-            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-                background: none;
-            }
-        """)
-        
-        goals_widget = QWidget()
-        goals_layout = QVBoxLayout(goals_widget)
-        goals_layout.setSpacing(8)
-        goals_layout.setContentsMargins(15, 15, 15, 15)
-        
-        for goal in self.final_goals:
-            goal_label = QLabel(goal)
-            goal_label.setWordWrap(True)
-            goal_label.setStyleSheet("""
-                font-size: 14px;
-                color: #1d1d1f;
-                padding: 8px 0px;
-                line-height: 1.4;
-            """)
-            goals_layout.addWidget(goal_label)
-        
-        scroll.setWidget(goals_widget)
-        layout.addWidget(scroll)
-        
-        # Buttons
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(12)
-        
-        back_btn = QPushButton("Revise Goals")
-        back_btn.clicked.connect(self.reject)
-        back_btn.setStyleSheet("""
-            QPushButton {
-                padding: 12px 20px;
-                font-size: 14px;
-                font-weight: 500;
-                border: 1px solid #d1d1d6;
-                border-radius: 8px;
-                background-color: white;
-                color: #1d1d1f;
-            }
-            QPushButton:hover { background-color: #f5f5f7; }
-        """)
-        
-        continue_btn = QPushButton("Start Focus Session")
-        continue_btn.clicked.connect(self.accept)
-        continue_btn.setDefault(True)
-        continue_btn.setStyleSheet("""
-            QPushButton {
-                padding: 12px 20px;
-                font-size: 14px;
-                font-weight: 600;
-                border: none;
-                border-radius: 8px;
-                background-color: #007aff;
-                color: white;
-            }
-            QPushButton:hover { background-color: #0056cc; }
-        """)
-        
-        button_layout.addWidget(back_btn)
-        button_layout.addWidget(continue_btn)
-        
-        layout.addLayout(button_layout)
-        self.setLayout(layout)
-    
-    def center_window(self):
-        from PyQt5.QtWidgets import QDesktopWidget
-        qr = self.frameGeometry()
-        cp = QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(qr.topLeft())
-
 class ProgressPopup(QWidget):
     def __init__(self, session_duration, goals, popup_interval=1):
         super().__init__()
         self.session_duration = session_duration  # in minutes
         self.goals = goals
         self.popup_interval = popup_interval  # in minutes
-        print(f"DEBUG: ProgressPopup initialized with interval: {popup_interval} minutes")
         self.start_time = datetime.now()
         self.completed_goals = set()
         self.app_usage = {}
@@ -1106,16 +596,7 @@ class ProgressPopup(QWidget):
     
     def init_ui(self):
         self.setWindowTitle('Focus Session')
-        # Dynamic height based on number of goals
-        base_height = 360
-        num_goals = min(len(self.goals), 3) if self.goals else 0
-        if num_goals > 0:
-            goal_height = num_goals * 40 + 80  # Space per goal + titles/margins
-            total_height = base_height + goal_height
-        else:
-            total_height = base_height
-        
-        self.setFixedSize(480, min(total_height, 500))  # Cap at 500px max
+        self.setFixedSize(480, 400)
         self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         
         
@@ -1123,13 +604,13 @@ class ProgressPopup(QWidget):
         
         self.setStyleSheet("""
             ProgressPopup {
-                background-color: transparent;
+                background-color: rgba(0, 0, 0, 240);
             }
         """)
         
-        # Create main container without margins
+        # Create main container with dark background
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setContentsMargins(40, 40, 40, 40)
         main_layout.setSpacing(0)
         
         # Create light-colored content container
@@ -1150,8 +631,8 @@ class ProgressPopup(QWidget):
         content_container.setGraphicsEffect(shadow)
         
         content_layout = QVBoxLayout(content_container)
-        content_layout.setContentsMargins(25, 25, 25, 25)  # Reduced margins to prevent clipping
-        content_layout.setSpacing(15)  # Reduced spacing to prevent clipping
+        content_layout.setContentsMargins(30, 30, 30, 30)
+        content_layout.setSpacing(20)
         
         # Header section
         header_layout = QVBoxLayout()
@@ -1181,7 +662,7 @@ class ProgressPopup(QWidget):
         
         # Progress section
         progress_layout = QVBoxLayout()
-        progress_layout.setSpacing(8)  # Reduced spacing to prevent clipping
+        progress_layout.setSpacing(12)
         
         # Encouraging message instead of large percentage
         self.encouraging_label = QLabel("Let's make some progress together!")
@@ -1198,25 +679,22 @@ class ProgressPopup(QWidget):
         
         # Progress bar
         self.progress_bar = QProgressBar()
-        self.progress_bar.setFixedHeight(32)  # Made thicker
+        self.progress_bar.setFixedHeight(24)  # Made even thicker
         self.progress_bar.setFormat("%p%")  # Show percentage on progress bar
         self.progress_bar.setStyleSheet("""
             QProgressBar {
-                border: 0px;
-                border-radius: 16px;
+                border: none;
+                border-radius: 12px;
                 background-color: #e5e5e7;
                 text-align: center;
                 color: white;
                 font-weight: 600;
                 font-size: 14px;
-                outline: none;
             }
             QProgressBar::chunk {
-                border: 0px;
-                border-radius: 16px;
+                border-radius: 12px;
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
                     stop:0 #007aff, stop:1 #0056cc);
-                outline: none;
             }
         """)
         
@@ -1230,51 +708,10 @@ class ProgressPopup(QWidget):
         content_layout.addLayout(progress_layout)
         
         # Goals section (only show if goals exist and it's not the first popup)
-        self.goals_container = QScrollArea()
-        self.goals_container.setWidgetResizable(True)
-        self.goals_container.setMaximumHeight(200)  # Limit height to make it scrollable
-        self.goals_container.setStyleSheet("""
-            QScrollArea {
-                border: none;
-                background-color: transparent;
-            }
-            QScrollBar:vertical {
-                border: none;
-                background-color: #f0f0f0;
-                width: 12px;
-                border-radius: 6px;
-                margin: 0;
-            }
-            QScrollBar::handle:vertical {
-                background-color: #c0c0c0;
-                border-radius: 6px;
-                min-height: 20px;
-                margin: 2px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background-color: #a0a0a0;
-            }
-            QScrollBar::handle:vertical:pressed {
-                background-color: #808080;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0px;
-                subcontrol-position: top;
-                subcontrol-origin: margin;
-            }
-            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-                background: none;
-            }
-        """)
-        
-        # Create the actual goals widget that will be scrolled
-        goals_widget = QWidget()
-        self.goals_layout = QVBoxLayout(goals_widget)
-        # Dynamic spacing based on number of goals
-        num_goals = min(len(self.goals), 8) if self.goals else 0  # Show up to 8 goals
-        dynamic_spacing = max(8, 20 - (num_goals * 2))  # More goals = less spacing
-        self.goals_layout.setSpacing(dynamic_spacing)
-        self.goals_layout.setContentsMargins(0, 10, 0, 10)
+        self.goals_container = QWidget()
+        self.goals_layout = QVBoxLayout(self.goals_container)
+        self.goals_layout.setSpacing(24)  # Further increased spacing
+        self.goals_layout.setContentsMargins(0, 16, 0, 16)  # Add top/bottom margins
         
         if self.goals:
             goals_title = QLabel("Quick Check-in:")
@@ -1287,20 +724,19 @@ class ProgressPopup(QWidget):
             """)
             self.goals_layout.addWidget(goals_title)
             
-            # Show all goals now since we have scrolling
+            # Show only first 3 goals to keep it clean
             self.goal_checkboxes = []
-            # Dynamic padding based on number of goals
-            for goal in self.goals:
+            for i, goal in enumerate(self.goals[:3]):
                 checkbox = QCheckBox(goal)
                 checkbox.setStyleSheet("""
                     QCheckBox {
                         font-size: 14px;
                         color: #4a4a4a;
-                        spacing: 12px;
-                        padding: 8px 0px;
+                        spacing: 18px;
+                        padding: 16px 0px;
                         font-weight: 500;
-                        line-height: 1.4;
-                        margin-bottom: 2px;
+                        line-height: 1.8;
+                        margin-bottom: 8px;
                     }
                     QCheckBox::indicator {
                         width: 18px;
@@ -1314,13 +750,28 @@ class ProgressPopup(QWidget):
                         background-color: #007aff;
                         border-color: #007aff;
                     }
+                    QCheckBox::indicator:checked:before {
+                        content: "✓";
+                        color: white;
+                        font-size: 10px;
+                    }
                 """)
                 checkbox.stateChanged.connect(self.goal_checked)
                 self.goals_layout.addWidget(checkbox)
                 self.goal_checkboxes.append(checkbox)
-        
-        # Set the goals widget inside the scroll area
-        self.goals_container.setWidget(goals_widget)
+            
+            if len(self.goals) > 3:
+                more_label = QLabel(f"...and {len(self.goals) - 3} more goals")
+                more_label.setStyleSheet("""
+                    font-size: 13px;
+                    color: #7a7a7a;
+                    font-style: italic;
+                    font-weight: 400;
+                    padding-left: 30px;
+                    padding-top: 8px;
+                    margin-top: 12px;
+                """)
+                self.goals_layout.addWidget(more_label)
         
         content_layout.addWidget(self.goals_container)
         
@@ -1379,37 +830,6 @@ class ProgressPopup(QWidget):
         
         self.setLayout(main_layout)
     
-    # Checkbox API methods for plugins
-    def get_checklist_progress_percentage(self) -> float:
-        """Get the current checklist completion percentage (0-100)"""
-        if not self.goals or not hasattr(self, 'goal_checkboxes'):
-            return 0.0
-        
-        completed_count = len(self.completed_goals)
-        total_count = len(self.goals)
-        return (completed_count / total_count * 100) if total_count > 0 else 0.0
-    
-    def get_completed_checklist_items(self) -> List[str]:
-        """Get list of completed checklist items"""
-        return list(self.completed_goals)
-    
-    def get_all_checklist_items(self) -> List[str]:
-        """Get list of all checklist items"""
-        return self.goals.copy() if self.goals else []
-    
-    def set_checklist_item_checked(self, item_text: str, checked: bool) -> bool:
-        """Set a checklist item as checked/unchecked. Returns True if successful."""
-        if not hasattr(self, 'goal_checkboxes'):
-            return False
-        
-        # Find the checkbox for this item
-        for checkbox in self.goal_checkboxes:
-            if checkbox.text() == item_text:
-                checkbox.setChecked(checked)
-                return True
-        
-        return False
-    
     def center_window(self):
         from PyQt5.QtWidgets import QDesktopWidget
         qr = self.frameGeometry()
@@ -1426,86 +846,56 @@ class ProgressPopup(QWidget):
         # Popup display timer
         self.popup_timer = QTimer()
         self.popup_timer.timeout.connect(self.show_popup)
-        timer_ms = self.popup_interval * 60 * 1000
-        print(f"DEBUG: Starting popup timer with {timer_ms}ms ({self.popup_interval} minutes)")
-        self.popup_timer.start(timer_ms)  # Convert to milliseconds
+        self.popup_timer.start(self.popup_interval * 60 * 1000)  # Convert to milliseconds
         
         # App tracking timer
         self.app_timer = QTimer()
         self.app_timer.timeout.connect(self.track_app_usage)
         self.app_timer.start(5000)  # Every 5 seconds
         
-        # Call session start hooks
-        try:
-            from plugin_system import plugin_manager
-            session_data = {
-                'duration': self.session_duration,
-                'goals': self.goals,
-                'start_time': self.start_time
-            }
-            plugin_manager.call_session_start_hooks(session_data)
-        except Exception as e:
-            print(f"Plugin session start hook error: {e}")
-        
         # Initial popup
         self.show_popup()
     
     def get_encouraging_message(self, progress):
-        """Generate encouraging messages based on progress - one per popup session"""
-        if not hasattr(self, '_current_message') or not hasattr(self, '_message_progress_range'):
-            # First time or need new message
-            if progress < 10:
-                messages = [
-                    "Every journey begins with a single step",
-                    "You've got this! Fresh start energy",
-                    "Time to dive in and make things happen",
-                    "Ready to tackle some goals?"
-                ]
-                self._message_progress_range = (0, 10)
-            elif progress < 25:
-                messages = [
-                    "Nice start! Building momentum now",
-                    "You're finding your rhythm",
-                    "Progress is progress, keep going",
-                    "Good things are already happening"
-                ]
-                self._message_progress_range = (10, 25)
-            elif progress < 50:
-                messages = [
-                    "You're hitting your stride now",
-                    "Solid progress! Keep the energy up",
-                    "Halfway there feels pretty good",
-                    "You're doing great, stay focused"
-                ]
-                self._message_progress_range = (25, 50)
-            elif progress < 75:
-                messages = [
-                    "Strong work! You're in the zone",
-                    "The finish line is getting closer",
-                    "You're crushing it today",
-                    "Great momentum, keep it flowing"
-                ]
-                self._message_progress_range = (50, 75)
-            else:
-                messages = [
-                    "Almost there! Final push time",
-                    "You're so close to the finish",
-                    "Strong finish ahead!",
-                    "Time to bring it home"
-                ]
-                self._message_progress_range = (75, 100)
-            
-            import random
-            self._current_message = random.choice(messages)
+        """Generate encouraging messages based on progress"""
+        if progress < 10:
+            messages = [
+                "Every journey begins with a single step",
+                "You've got this! Fresh start energy",
+                "Time to dive in and make things happen",
+                "Ready to tackle some goals?"
+            ]
+        elif progress < 25:
+            messages = [
+                "Nice start! Building momentum now",
+                "You're finding your rhythm",
+                "Progress is progress, keep going",
+                "Good things are already happening"
+            ]
+        elif progress < 50:
+            messages = [
+                "You're hitting your stride now",
+                "Solid progress! Keep the energy up",
+                "Halfway there feels pretty good",
+                "You're doing great, stay focused"
+            ]
+        elif progress < 75:
+            messages = [
+                "Strong work! You're in the zone",
+                "The finish line is getting closer",
+                "You're crushing it today",
+                "Great momentum, keep it flowing"
+            ]
+        else:
+            messages = [
+                "Almost there! Final push time",
+                "You're so close to the finish",
+                "Strong finish ahead!",
+                "Time to bring it home"
+            ]
         
-        # Check if we've moved to a new progress range
-        elif not (self._message_progress_range[0] <= progress < self._message_progress_range[1]):
-            # Progress moved to new range, clear message so it gets refreshed next time
-            delattr(self, '_current_message')
-            delattr(self, '_message_progress_range')
-            return self.get_encouraging_message(progress)
-        
-        return self._current_message
+        import random
+        return random.choice(messages)
     
     def update_progress(self):
         elapsed = (datetime.now() - self.start_time).total_seconds() / 60  # minutes
@@ -1536,13 +926,6 @@ class ProgressPopup(QWidget):
         
         self.time_label.setText(time_text)
         
-        # Call session update hooks
-        try:
-            from plugin_system import plugin_manager
-            plugin_manager.call_session_update_hooks(elapsed, progress)
-        except Exception as e:
-            print(f"Plugin session update hook error: {e}")
-        
         # Check if session is complete
         if elapsed >= self.session_duration:
             self.session_complete()
@@ -1570,18 +953,6 @@ class ProgressPopup(QWidget):
             pass
     
     def show_popup(self):
-        # Reset encouraging message for each popup to ensure it only shows one per popup
-        if hasattr(self, '_current_message'):
-            delattr(self, '_current_message')
-        if hasattr(self, '_message_progress_range'):
-            delattr(self, '_message_progress_range')
-        
-        elapsed = (datetime.now() - self.start_time).total_seconds() / 60
-        print(f"DEBUG: Showing progress popup at {elapsed:.1f} minutes")
-        print(f"DEBUG: Popup timer active: {self.popup_timer.isActive()}")
-        print(f"DEBUG: Progress timer active: {self.progress_timer.isActive()}")
-        print(f"DEBUG: App timer active: {self.app_timer.isActive()}")
-            
         self.show()
         self.raise_()
         self.activateWindow()
@@ -1601,11 +972,6 @@ class ProgressPopup(QWidget):
             # Fallback: just ensure this window loses focus
             self.clearFocus()
             self.setWindowState(Qt.WindowMinimized)
-        
-        # Make sure the popup timer keeps running so it shows again at the next interval
-        if hasattr(self, 'popup_timer') and not self.popup_timer.isActive():
-            print("DEBUG: Restarting popup timer after continue session")
-            self.popup_timer.start(self.popup_interval * 60 * 1000)
     
     def goal_checked(self, state):
         checkbox = self.sender()
@@ -1615,35 +981,11 @@ class ProgressPopup(QWidget):
             self.completed_goals.add(goal_text)
         else:
             self.completed_goals.discard(goal_text)
-        
-        # Call plugin hooks for checklist item changes
-        try:
-            from plugin_system import plugin_manager
-            print(f"DEBUG: Calling checklist item changed hooks for: {goal_text}, checked: {state == 2}")
-            plugin_manager.call_checklist_item_changed_hooks(goal_text, state == 2)
-        except Exception as e:
-            print(f"Error calling checklist item changed hooks: {e}")
-            import traceback
-            traceback.print_exc()
     
     def session_complete(self):
         self.progress_timer.stop()
         self.popup_timer.stop()
         self.app_timer.stop()
-        
-        # Call session end hooks
-        try:
-            from plugin_system import plugin_manager
-            session_data = {
-                'duration': self.session_duration,
-                'goals': self.goals,
-                'completed_goals': self.completed_goals,
-                'app_usage': self.app_usage,
-                'end_time': datetime.now()
-            }
-            plugin_manager.call_session_end_hooks(session_data)
-        except Exception as e:
-            print(f"Plugin session end hook error: {e}")
         
         # Show session summary
         summary = SessionSummary(
@@ -1653,16 +995,7 @@ class ProgressPopup(QWidget):
             app_usage=self.app_usage
         )
         summary.show()
-        summary.raise_()
-        summary.activateWindow()
         self.close()
-        
-        # Kill background processes with password dialog if needed
-        stop_focus_mode_with_password()
-        
-        # Exit the application
-        import sys
-        sys.exit(0)
     
     def stop_focus_mode(self):
         """Completely stop the focus mode session"""
@@ -1674,37 +1007,17 @@ class ProgressPopup(QWidget):
         if hasattr(self, 'app_timer'):
             self.app_timer.stop()
         
-        # Call session end hooks for early termination
-        try:
-            from plugin_system import plugin_manager
-            session_data = {
-                'duration': self.session_duration,
-                'goals': self.goals,
-                'completed_goals': self.completed_goals,
-                'app_usage': self.app_usage,
-                'end_time': datetime.now(),
-                'early_termination': True
-            }
-            plugin_manager.call_session_end_hooks(session_data)
-        except Exception as e:
-            print(f"Plugin session end hook error: {e}")
-        
-        # Show session summary for premature termination
-        summary = SessionSummary(
-            session_duration=self.session_duration,
-            goals=self.goals,
-            completed_goals=self.completed_goals,
-            app_usage=self.app_usage
-        )
-        summary.show()
-        summary.raise_()
-        summary.activateWindow()
-        
         # Close the popup
         self.close()
         
-        # Kill background processes with password dialog if needed
-        stop_focus_mode_with_password()
+        # Kill background processes with timeout
+        try:
+            import subprocess
+            subprocess.run(['bash', './stop_focus_mode.sh'], 
+                         cwd=os.path.dirname(os.path.abspath(__file__)), 
+                         timeout=10)
+        except:
+            pass
         
         # Exit the application
         import sys
@@ -1719,49 +1032,10 @@ class SessionSummary(QWidget):
         self.app_usage = app_usage
         self.init_ui()
     
-    def get_encouraging_title(self):
-        """Generate encouraging but realistic title based on completion"""
-        if self.goals:
-            completed_count = len(self.completed_goals)
-            total_count = len(self.goals)
-            completion_rate = (completed_count / total_count * 100) if total_count > 0 else 0
-            
-            if completion_rate >= 80:
-                return "Outstanding Focus Session!"
-            elif completion_rate >= 60:
-                return "Great Work Today!"
-            elif completion_rate >= 40:
-                return "Solid Progress Made!"
-            elif completion_rate >= 20:
-                return "Good Start - Keep Building!"
-            else:
-                return "Every Step Counts!"
-        else:
-            return "Focus Time Complete!"
-    
     def init_ui(self):
         self.setWindowTitle('Session Complete')
-        # Use normal window flags for better stability on macOS
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
-        self.setAttribute(Qt.WA_ShowWithoutActivating, False)  # Allow activation
-        
-        # Close any other plugin dialogs that might be open
-        try:
-            from plugin_system import plugin_manager
-            # Call cleanup on all plugins to close any open dialogs
-            for plugin in plugin_manager.loaded_plugins.values():
-                if hasattr(plugin, '_active_dialogs'):
-                    for dialog in plugin._active_dialogs[:]:  # Copy list to avoid modification during iteration
-                        try:
-                            dialog.close()
-                        except:
-                            pass
-                    plugin._active_dialogs.clear()
-        except Exception as e:
-            print(f"Error closing plugin dialogs: {e}")
-        
-        # Show maximized instead of fullscreen for better stability
-        self.showMaximized()
+        self.showFullScreen()
         
         # Black background like countdown
         self.setStyleSheet("background-color: #000000;")
@@ -1770,9 +1044,8 @@ class SessionSummary(QWidget):
         layout.setAlignment(Qt.AlignCenter)
         layout.setContentsMargins(50, 50, 50, 50)
         
-        # Dynamic title based on completion rate
-        title_text = self.get_encouraging_title()
-        title = QLabel(title_text)
+        # Title
+        title = QLabel("Focus Session Complete!")
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("""
             color: #007aff;
@@ -1863,29 +1136,10 @@ class SessionSummary(QWidget):
         layout.addWidget(close_label)
         
         self.setLayout(layout)
-        
-        # Add timer to ensure the window stays visible for at least a few seconds
-        self.min_display_timer = QTimer()
-        self.min_display_timer.setSingleShot(True)
-        self.min_display_timer.timeout.connect(self.enable_close)
-        self.can_close = False
-        self.min_display_timer.start(2000)  # 2 seconds minimum display time
-    
-    def enable_close(self):
-        """Enable closing after minimum display time"""
-        self.can_close = True
     
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Escape and self.can_close:
+        if event.key() == Qt.Key_Escape:
             self.close()
-    
-    def showEvent(self, event):
-        """Override showEvent to ensure proper focus and visibility"""
-        super().showEvent(event)
-        # Force the window to come to the front and stay there
-        self.raise_()
-        self.activateWindow()
-        self.setFocus()
 
 class PasswordDialog(QDialog):
     def __init__(self, parent=None):
@@ -2294,10 +1548,7 @@ class FocusSelector(QWidget):
     def init_ui(self):
         self.setWindowTitle('Focus Mode Selector')
         self.setFixedSize(600, 550)
-        
-        # Ensure window comes to front when opened
-        self.activateWindow()
-        self.raise_()
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
         
         # Center the window
         self.center_window()
@@ -2317,35 +1568,6 @@ class FocusSelector(QWidget):
         # Header section
         header_layout = QVBoxLayout()
         header_layout.setSpacing(8)
-        
-        # Top bar with settings button
-        top_bar_layout = QHBoxLayout()
-        top_bar_layout.addStretch()
-        
-        # Settings button
-        settings_btn = QPushButton("Settings")
-        settings_btn.setFixedSize(80, 35)
-        settings_btn.clicked.connect(self.show_plugin_settings)
-        settings_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e0e0e0;
-                border: none;
-                border-radius: 17px;
-                font-size: 16px;
-                color: #666;
-            }
-            QPushButton:hover {
-                background-color: #d0d0d0;
-                color: #333;
-            }
-            QPushButton:pressed {
-                background-color: #c0c0c0;
-            }
-        """)
-        settings_btn.setToolTip("Settings")
-        top_bar_layout.addWidget(settings_btn)
-        
-        header_layout.addLayout(top_bar_layout)
         
         # Large focus icon - removed emoji
         icon_label = QLabel("FOCUS")
@@ -2502,17 +1724,6 @@ class FocusSelector(QWidget):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
     
-    def show_plugin_settings(self):
-        """Show the plugin settings window"""
-        try:
-            from plugin_settings_dialog import PluginSettingsDialog
-            self.settings_window = PluginSettingsDialog(self)
-            self.settings_window.show()
-            self.settings_window.raise_()
-            self.settings_window.activateWindow()
-        except Exception as e:
-            print(f"Error showing plugin settings: {e}")
-    
     def start_focus(self):
         if self.mode_combo.currentIndex() > 0:  # Not "Select a mode..."
             self.selected_mode = self.modes[self.mode_combo.currentIndex() - 1]
@@ -2526,13 +1737,6 @@ class FocusSelector(QWidget):
 class FocusLauncher:
     def __init__(self):
         self.app = QApplication(sys.argv)
-        
-        # Initialize plugin system
-        try:
-            from plugin_system import plugin_manager
-            # Plugin manager is initialized when imported and will load previously enabled plugins
-        except Exception as e:
-            print(f"Plugin system initialization error: {e}")
         
     def run(self):
         # Show mode selector
@@ -2567,66 +1771,10 @@ class FocusLauncher:
         
         if review_result == QDialog.Rejected:
             # User wants to revise goals, go back to goals dialog
-            print("User requested to revise goals, restarting goal input process...")
-            goals_dialog = GoalsDialog()
-            if goals_dialog.exec_() != QDialog.Accepted:
-                print("No goals specified on revision. Exiting.")
-                return
-            
-            analyzed_goals = goals_dialog.analyzed_goals
-            
-            # Show goals review dialog again with new goals
-            goals_review = GoalsReviewDialog(analyzed_goals)
-            goals_review.used_ai = getattr(goals_dialog, 'used_ai', False)
-            review_result = goals_review.exec_()
-            
-            if review_result == QDialog.Rejected:
-                # If user rejects again, exit
-                print("Goals revision cancelled. Exiting.")
-                return
-            elif not goals_review.approved:
-                print("Goals review not approved. Exiting.")
-                return
+            return self.run()  # Restart the entire process
         elif not goals_review.approved:
             print("Goals review not approved. Exiting.")
             return
-        
-        # Show plugin task scanning dialog (generic for all plugins)
-        plugin_scan = PluginTaskDialog(analyzed_goals)
-        if plugin_scan.exec_() != QDialog.Accepted:
-            print("Plugin task scanning cancelled. Exiting.")
-            return
-        
-        # Use final goals (with plugin tasks if any were added)
-        final_goals = plugin_scan.final_goals
-        
-        # Show final goals if plugin tasks were added
-        if len(final_goals) > len(analyzed_goals):
-            final_review = FinalGoalsDialog(final_goals)
-            if final_review.exec_() == QDialog.Rejected:
-                # User wants to revise goals, go back to goals dialog
-                print("User requested to revise final goals, restarting goal input process...")
-                goals_dialog = GoalsDialog()
-                if goals_dialog.exec_() != QDialog.Accepted:
-                    print("No goals specified on revision. Exiting.")
-                    return
-                
-                analyzed_goals = goals_dialog.analyzed_goals
-                
-                # Show goals review dialog again with new goals  
-                goals_review = GoalsReviewDialog(analyzed_goals)
-                goals_review.used_ai = getattr(goals_dialog, 'used_ai', False)
-                if goals_review.exec_() != QDialog.Accepted or not goals_review.approved:
-                    print("Goals review not approved. Exiting.")
-                    return
-                
-                # Re-run plugin scan with new goals
-                plugin_scan = PluginTaskDialog(analyzed_goals)
-                if plugin_scan.exec_() != QDialog.Accepted:
-                    print("Plugin task scanning cancelled. Exiting.")
-                    return
-                
-                final_goals = plugin_scan.final_goals
         
         # Show countdown
         countdown = CountdownWindow(selector.selected_mode)
@@ -2636,17 +1784,8 @@ class FocusLauncher:
         # Launch focus mode
         self.launch_focus_mode(selector.selected_mode, selector.use_website_blocking)
         
-        # Start progress tracking with final goals
-        popup_interval = get_popup_interval_setting()
-        print(f"DEBUG: Using popup interval: {popup_interval} minutes")
-        self.progress_popup = ProgressPopup(session_duration, final_goals, popup_interval=popup_interval)
-        
-        # Set progress popup reference for plugin system
-        try:
-            from plugin_system import plugin_manager
-            plugin_manager.set_progress_popup_reference(self.progress_popup)
-        except Exception as e:
-            print(f"Error setting progress popup reference: {e}")
+        # Start progress tracking
+        self.progress_popup = ProgressPopup(session_duration, analyzed_goals, popup_interval=1)
         
         # Keep the application running during the session
         self.app.exec_()
@@ -2673,22 +1812,22 @@ class FocusLauncher:
                     # Create modified script that uses the provided password
                     try:
                         self.run_with_password(mode, password)
-                        print(f"{mode.title()} focus mode activated with website blocking!")
+                        print(f"✅ {mode.title()} focus mode activated with website blocking!")
                     except Exception as e:
-                        print(f"Failed to activate focus mode: {e}")
+                        print(f"❌ Failed to activate focus mode: {e}")
                         return
                 else:
-                    print("Password required for website blocking. Exiting.")
+                    print("❌ Password required for website blocking. Exiting.")
                     return
             else:
                 subprocess.run(['bash', './set_mode_nosudo.sh', mode], check=True)
-                print(f"{mode.title()} focus mode activated (apps only, no website blocking)!")
+                print(f"✅ {mode.title()} focus mode activated (apps only, no website blocking)!")
                 
         except subprocess.CalledProcessError as e:
-            print(f"Error launching focus mode: {e}")
+            print(f"❌ Error launching focus mode: {e}")
             sys.exit(1)
         except Exception as e:
-            print(f"Unexpected error: {e}")
+            print(f"❌ Unexpected error: {e}")
             sys.exit(1)
     
     def run_with_password(self, mode, password):
@@ -2719,7 +1858,7 @@ class FocusLauncher:
             subprocess.run(cmd4, shell=True)
             
         except Exception as e:
-            print(f"Error setting up focus mode with password: {e}")
+            print(f"❌ Error setting up focus mode with password: {e}")
             raise
 
 if __name__ == "__main__":

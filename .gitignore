@@ -13,3 +13,5 @@ __pycache__/
 
 # Temporary files
 *.tmp
+
+CODE_EXPLANATION.md
