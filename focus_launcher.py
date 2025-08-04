@@ -6,7 +6,7 @@ import subprocess
 import time
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QComboBox, QPushButton, QFrame, QLineEdit, QDialog, QGraphicsDropShadowEffect,
-                             QSpinBox, QTextEdit, QCheckBox, QScrollArea, QProgressBar)
+                             QSpinBox, QTextEdit, QCheckBox, QScrollArea, QProgressBar, QGraphicsBlurEffect)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPropertyAnimation, QEasingCurve, QThread
 from PyQt5.QtGui import QFont, QPalette, QColor, QPainter, QPen, QBrush, QPixmap, QRadialGradient
 import math
@@ -92,7 +92,8 @@ class TimePickerDialog(QDialog):
     def init_ui(self):
         self.setWindowTitle('Session Duration')
         self.setFixedSize(400, 250)
-        self.setWindowFlags(Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WA_ShowWithoutActivating, False)  # Allow activation
         
         # Add shadow effect
         shadow = QGraphicsDropShadowEffect()
@@ -258,10 +259,23 @@ class TimePickerDialog(QDialog):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
     
+    def showEvent(self, event):
+        """Override showEvent to ensure proper focus and visibility"""
+        super().showEvent(event)
+        # Force the window to come to the front and stay there
+        self.raise_()
+        self.activateWindow()
+        self.setFocus()
+    
     def accept_time(self):
         self.duration_minutes = self.hours_spin.value() * 60 + self.minutes_spin.value()
         if self.duration_minutes > 0:
+            self.dialog_result = QDialog.Accepted
             self.accept()
+    
+    def reject(self):
+        self.dialog_result = QDialog.Rejected
+        super().reject()
 
 class GoalsDialog(QDialog):
     def __init__(self, parent=None):
@@ -1646,23 +1660,16 @@ class ProgressPopup(QWidget):
             print(f"Plugin session end hook error: {e}")
         
         # Show session summary
-        summary = SessionSummary(
+        self.summary = SessionSummary(  # Keep reference to prevent garbage collection
             session_duration=self.session_duration,
             goals=self.goals,
             completed_goals=self.completed_goals,
             app_usage=self.app_usage
         )
-        summary.show()
-        summary.raise_()
-        summary.activateWindow()
+        self.summary.show()
+        self.summary.raise_()
+        self.summary.activateWindow()
         self.close()
-        
-        # Kill background processes with password dialog if needed
-        stop_focus_mode_with_password()
-        
-        # Exit the application
-        import sys
-        sys.exit(0)
     
     def stop_focus_mode(self):
         """Completely stop the focus mode session"""
@@ -1690,25 +1697,76 @@ class ProgressPopup(QWidget):
             print(f"Plugin session end hook error: {e}")
         
         # Show session summary for premature termination
-        summary = SessionSummary(
+        self.summary = SessionSummary(  # Keep reference to prevent garbage collection
             session_duration=self.session_duration,
             goals=self.goals,
             completed_goals=self.completed_goals,
             app_usage=self.app_usage
         )
-        summary.show()
-        summary.raise_()
-        summary.activateWindow()
+        self.summary.show()
+        self.summary.raise_()
+        self.summary.activateWindow()
         
         # Close the popup
         self.close()
+
+class AnimatedBackground(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.animation_offset = 0
+        self.setStyleSheet("background: transparent;")
         
-        # Kill background processes with password dialog if needed
-        stop_focus_mode_with_password()
+        # Start animation timer
+        self.animation_timer = QTimer()
+        self.animation_timer.timeout.connect(self.update_animation)
+        self.animation_timer.start(50)  # 20 FPS
+    
+    def update_animation(self):
+        """Update animation frame"""
+        self.animation_offset += 0.02
+        self.update()  # Trigger paintEvent
+    
+    def paintEvent(self, event):
+        """Paint animated blue shapes"""
+        del event  # Unused parameter
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
         
-        # Exit the application
-        import sys
-        sys.exit(0)
+        # Simple animated shapes
+        shapes = [
+            {
+                'x_base': 0.2, 'y_base': 0.3, 'x_range': 0.15, 'y_range': 0.1,
+                'x_speed': 0.3, 'y_speed': 0.4, 'size': 0.25,
+                'color': QColor(59, 130, 246, 120)  # Blue - higher opacity for blur
+            },
+            {
+                'x_base': 0.7, 'y_base': 0.6, 'x_range': 0.12, 'y_range': 0.15,
+                'x_speed': 0.2, 'y_speed': 0.35, 'size': 0.3,
+                'color': QColor(99, 102, 241, 100)  # Indigo
+            },
+            {
+                'x_base': 0.4, 'y_base': 0.8, 'x_range': 0.18, 'y_range': 0.08,
+                'x_speed': 0.25, 'y_speed': 0.3, 'size': 0.2,
+                'color': QColor(139, 92, 246, 90)  # Purple
+            },
+            {
+                'x_base': 0.1, 'y_base': 0.1, 'x_range': 0.1, 'y_range': 0.12,
+                'x_speed': 0.4, 'y_speed': 0.2, 'size': 0.18,
+                'color': QColor(16, 185, 129, 80)  # Teal
+            }
+        ]
+        
+        painter.setPen(Qt.NoPen)
+        
+        for shape in shapes:
+            # Calculate position based on animation offset
+            x = (shape['x_base'] + shape['x_range'] * math.sin(self.animation_offset * shape['x_speed'])) * self.width()
+            y = (shape['y_base'] + shape['y_range'] * math.cos(self.animation_offset * shape['y_speed'])) * self.height()
+            size = shape['size'] * min(self.width(), self.height())
+            
+            # Simple circle shape
+            painter.setBrush(QBrush(shape['color']))
+            painter.drawEllipse(int(x - size/2), int(y - size/2), int(size), int(size))
 
 class SessionSummary(QWidget):
     def __init__(self, session_duration, goals, completed_goals, app_usage):
@@ -1741,17 +1799,16 @@ class SessionSummary(QWidget):
     
     def init_ui(self):
         self.setWindowTitle('Session Complete')
-        # Use normal window flags for better stability on macOS
+        # Use same window setup as CountdownWindow
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
-        self.setAttribute(Qt.WA_ShowWithoutActivating, False)  # Allow activation
+        self.showMaximized()
         
         # Close any other plugin dialogs that might be open
         try:
             from plugin_system import plugin_manager
-            # Call cleanup on all plugins to close any open dialogs
             for plugin in plugin_manager.loaded_plugins.values():
                 if hasattr(plugin, '_active_dialogs'):
-                    for dialog in plugin._active_dialogs[:]:  # Copy list to avoid modification during iteration
+                    for dialog in plugin._active_dialogs[:]:
                         try:
                             dialog.close()
                         except:
@@ -1760,17 +1817,21 @@ class SessionSummary(QWidget):
         except Exception as e:
             print(f"Error closing plugin dialogs: {e}")
         
-        # Show maximized instead of fullscreen for better stability
-        self.showMaximized()
-        
-        # Black background like countdown
+        # Black background like CountdownWindow - THIS WORKS
         self.setStyleSheet("background-color: #000000;")
         
-        layout = QVBoxLayout()
-        layout.setAlignment(Qt.AlignCenter)
-        layout.setContentsMargins(50, 50, 50, 50)
+        # Start animation for background shapes
+        self.animation_offset = 0
+        self.animation_timer = QTimer()
+        self.animation_timer.timeout.connect(self.update_animation)
+        self.animation_timer.start(50)  # 20 FPS
         
-        # Dynamic title based on completion rate
+        # Main layout like CountdownWindow
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(50, 50, 50, 50)
+        main_layout.setSpacing(30)
+        
+        # Header section
         title_text = self.get_encouraging_title()
         title = QLabel(title_text)
         title.setAlignment(Qt.AlignCenter)
@@ -1779,110 +1840,263 @@ class SessionSummary(QWidget):
             font-size: 48px;
             font-weight: bold;
             margin-bottom: 30px;
+            background: transparent;
+            border: none;
         """)
-        layout.addWidget(title)
+        main_layout.addWidget(title)
         
-        # Stats container
-        stats_container = QFrame()
-        stats_container.setStyleSheet("""
-            QFrame {
-                background-color: rgba(255, 255, 255, 10);
-                border-radius: 20px;
-                padding: 30px;
+        # Subtitle
+        subtitle = QLabel("Here's how your focus session went")
+        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setStyleSheet("""
+            color: #ffffff;
+            font-size: 20px;
+            margin-bottom: 40px;
+            background: transparent;
+            border: none;
+        """)
+        main_layout.addWidget(subtitle)
+        
+        # Create scrollable content area
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet("""
+            QScrollArea {
+                background-color: transparent;
+                border: none;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: rgba(255, 255, 255, 0.1);
+                width: 12px;
+                border-radius: 6px;
+                margin: 0;
+            }
+            QScrollBar::handle:vertical {
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 6px;
+                min-height: 20px;
+                margin: 2px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: rgba(255, 255, 255, 0.5);
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: none;
             }
         """)
-        stats_container.setMaximumWidth(800)
         
-        stats_layout = QVBoxLayout(stats_container)
+        # Stats content widget
+        stats_widget = QWidget()
+        stats_widget.setStyleSheet("background-color: transparent;")
+        stats_layout = QVBoxLayout(stats_widget)
+        stats_layout.setSpacing(30)
+        stats_layout.setContentsMargins(20, 20, 20, 20)
         
         # Session duration
-        duration_text = f"Session Duration: {self.session_duration} minutes"
-        duration_label = QLabel(duration_text)
-        duration_label.setAlignment(Qt.AlignCenter)
-        duration_label.setStyleSheet("""
-            color: #ffffff;
-            font-size: 24px;
-            margin-bottom: 20px;
+        duration_container = QFrame()
+        duration_container.setStyleSheet("""
+            QFrame {
+                background-color: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 20px;
+                padding: 20px;
+            }
         """)
-        stats_layout.addWidget(duration_label)
         
-        # Goals completion
+        duration_layout = QVBoxLayout(duration_container)
+        duration_layout.setSpacing(10)
+        
+        duration_title = QLabel("Session Duration")
+        duration_title.setAlignment(Qt.AlignCenter)
+        duration_title.setStyleSheet("""
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 16px;
+            font-weight: 500;
+            background: transparent;
+            border: none;
+        """)
+        duration_layout.addWidget(duration_title)
+        
+        duration_value = QLabel(f"{self.session_duration} minutes")
+        duration_value.setAlignment(Qt.AlignCenter)
+        duration_value.setStyleSheet("""
+            color: #ffffff;
+            font-size: 28px;
+            font-weight: bold;
+            background: transparent;
+            border: none;
+        """)
+        duration_layout.addWidget(duration_value)
+        
+        stats_layout.addWidget(duration_container)
+        
+        # Goals completion if we have goals
         if self.goals:
             completed_count = len(self.completed_goals)
             total_count = len(self.goals)
             completion_rate = (completed_count / total_count * 100) if total_count > 0 else 0
             
-            goals_text = f"Goals Completed: {completed_count}/{total_count} ({completion_rate:.0f}%)"
-            goals_label = QLabel(goals_text)
-            goals_label.setAlignment(Qt.AlignCenter)
-            goals_label.setStyleSheet("""
-                color: #ffffff;
-                font-size: 18px;
-                margin-bottom: 20px;
+            goals_container = QFrame()
+            goals_container.setStyleSheet("""
+                QFrame {
+                    background-color: rgba(255, 255, 255, 0.1);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 20px;
+                    padding: 20px;
+                }
             """)
-            stats_layout.addWidget(goals_label)
-        
-        # Top apps used
-        if self.app_usage:
-            top_apps = sorted(self.app_usage.items(), key=lambda x: x[1], reverse=True)[:5]
+            goals_layout = QVBoxLayout(goals_container)
+            goals_layout.setSpacing(15)
             
-            apps_title = QLabel("Top Apps Used:")
+            goals_title = QLabel("Goals Completed")
+            goals_title.setAlignment(Qt.AlignCenter)
+            goals_title.setStyleSheet("""
+                color: rgba(255, 255, 255, 0.8);
+                font-size: 16px;
+                font-weight: 500;
+                background: transparent;
+                border: none;
+            """)
+            goals_layout.addWidget(goals_title)
+            
+            goals_value = QLabel(f"{completed_count}/{total_count} ({completion_rate:.0f}%)")
+            goals_value.setAlignment(Qt.AlignCenter)
+            goals_value.setStyleSheet("""
+                color: #ffffff;
+                font-size: 28px;
+                font-weight: bold;
+                background: transparent;
+                border: none;
+            """)
+            goals_layout.addWidget(goals_value)
+            
+            # Individual goals list
+            for goal in self.goals:
+                is_completed = goal in self.completed_goals
+                goal_item = QLabel(f"{'✅' if is_completed else '⏳'} {goal.replace('• ', '')}")
+                goal_item.setWordWrap(True)
+                goal_item.setStyleSheet(f"""
+                    color: {'rgba(255, 255, 255, 0.9)' if is_completed else 'rgba(255, 255, 255, 0.6)'};
+                    font-size: 14px;
+                    padding: 5px;
+                    {'text-decoration: line-through;' if is_completed else ''}
+                """)
+                goals_layout.addWidget(goal_item)
+            
+            stats_layout.addWidget(goals_container)
+        
+        # Top apps if we have usage data
+        if self.app_usage:
+            apps_container = QFrame()
+            apps_container.setStyleSheet("""
+                QFrame {
+                    background-color: rgba(255, 255, 255, 0.1);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 20px;
+                    padding: 20px;
+                }
+            """)
+            apps_layout = QVBoxLayout(apps_container)
+            apps_layout.setSpacing(10)
+            
+            apps_title = QLabel("Top Apps Used")
             apps_title.setAlignment(Qt.AlignCenter)
             apps_title.setStyleSheet("""
-                color: #ffffff;
-                font-size: 18px;
-                font-weight: bold;
+                color: rgba(255, 255, 255, 0.8);
+                font-size: 16px;
+                font-weight: 500;
                 margin-bottom: 10px;
+                background: transparent;
+                border: none;
             """)
-            stats_layout.addWidget(apps_title)
+            apps_layout.addWidget(apps_title)
             
-            for app, seconds in top_apps:
+            # Show top 5 apps (excluding focus launcher related apps)
+            focus_related_apps = ['focus_launcher.py', 'Python', 'focus_launcher', 'focusmode.py', 'Terminal']
+            filtered_apps = {app: time for app, time in self.app_usage.items() 
+                           if not any(focus_app.lower() in app.lower() for focus_app in focus_related_apps)}
+            top_apps = sorted(filtered_apps.items(), key=lambda x: x[1], reverse=True)[:5]
+            for i, (app, seconds) in enumerate(top_apps):
                 minutes = seconds // 60
                 remaining_seconds = seconds % 60
                 time_str = f"{minutes}m {remaining_seconds}s" if minutes > 0 else f"{remaining_seconds}s"
                 
-                app_label = QLabel(f"• {app}: {time_str}")
-                app_label.setAlignment(Qt.AlignCenter)
-                app_label.setStyleSheet("""
-                    color: #ffffff;
+                app_item = QLabel(f"{i+1}. {app}: {time_str}")
+                app_item.setStyleSheet("""
+                    color: rgba(255, 255, 255, 0.8);
                     font-size: 14px;
-                    margin-bottom: 5px;
+                    padding: 3px;
                 """)
-                stats_layout.addWidget(app_label)
+                apps_layout.addWidget(app_item)
+            
+            stats_layout.addWidget(apps_container)
         
-        layout.addWidget(stats_container, 0, Qt.AlignCenter)
+        scroll.setWidget(stats_widget)
+        main_layout.addWidget(scroll)
         
-        # Close instruction
-        close_label = QLabel("Press ESC to close")
-        close_label.setAlignment(Qt.AlignCenter)
-        close_label.setStyleSheet("""
+        # Close button
+        close_btn = QPushButton("Close Summary")
+        close_btn.clicked.connect(self.close_with_cleanup)
+        close_btn.setStyleSheet("""
+            QPushButton {
+                padding: 15px 40px;
+                font-size: 16px;
+                font-weight: 600;
+                border: 2px solid #007aff;
+                border-radius: 25px;
+                background-color: rgba(0, 122, 255, 0.2);
+                color: #ffffff;
+            }
+            QPushButton:hover {
+                background-color: rgba(0, 122, 255, 0.4);
+            }
+            QPushButton:pressed {
+                background-color: rgba(0, 122, 255, 0.6);
+            }
+        """)
+        main_layout.addWidget(close_btn, 0, Qt.AlignCenter)
+        
+        # ESC instruction
+        esc_label = QLabel("Press ESC to close")
+        esc_label.setAlignment(Qt.AlignCenter)
+        esc_label.setStyleSheet("""
             color: #86868b;
             font-size: 16px;
-            margin-top: 40px;
+            margin-top: 20px;
         """)
-        layout.addWidget(close_label)
+        main_layout.addWidget(esc_label)
         
-        self.setLayout(layout)
-        
-        # Add timer to ensure the window stays visible for at least a few seconds
-        self.min_display_timer = QTimer()
-        self.min_display_timer.setSingleShot(True)
-        self.min_display_timer.timeout.connect(self.enable_close)
-        self.can_close = False
-        self.min_display_timer.start(2000)  # 2 seconds minimum display time
+        self.setLayout(main_layout)
     
-    def enable_close(self):
-        """Enable closing after minimum display time"""
-        self.can_close = True
+    def resizeEvent(self, event):
+        """Handle window resize to update background widget"""
+        super().resizeEvent(event)
+        if hasattr(self, 'background_widget'):
+            self.background_widget.setGeometry(self.rect())
+    
+    def close_with_cleanup(self):
+        """Close with proper cleanup and exit"""
+        self.close()
+        
+        # Kill background processes with password dialog if needed
+        stop_focus_mode_with_password()
+        
+        # Exit the application after cleanup is complete
+        import sys
+        sys.exit(0)
     
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Escape and self.can_close:
-            self.close()
+        if event.key() == Qt.Key_Escape:
+            self.close_with_cleanup()
     
     def showEvent(self, event):
         """Override showEvent to ensure proper focus and visibility"""
         super().showEvent(event)
-        # Force the window to come to the front and stay there
         self.raise_()
         self.activateWindow()
         self.setFocus()
@@ -2118,6 +2332,7 @@ class CountdownWindow(QWidget):
         self.mode = mode
         self.countdown = 15
         self.allowed_apps = self.get_allowed_apps(mode)
+        self.countdown_finished = False
         self.init_ui()
         self.start_countdown()
     
@@ -2275,12 +2490,14 @@ class CountdownWindow(QWidget):
         else:
             self.timer.stop()
             self.breathing_circle.animation_timer.stop()
+            self.countdown_finished = True
             self.close()
     
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
             self.timer.stop()
             self.breathing_circle.animation_timer.stop()
+            self.countdown_finished = True
             self.close()
             sys.exit(0)
 
@@ -2527,6 +2744,9 @@ class FocusLauncher:
     def __init__(self):
         self.app = QApplication(sys.argv)
         
+        # Prevent app from quitting when all windows are closed (important for background timers)
+        self.app.setQuitOnLastWindowClosed(False)
+        
         # Initialize plugin system
         try:
             from plugin_system import plugin_manager
@@ -2538,7 +2758,10 @@ class FocusLauncher:
         # Show mode selector
         selector = FocusSelector()
         selector.show()
-        self.app.exec_()
+        
+        # Wait for selector to be completed using non-modal approach
+        while selector.selected_mode is None and selector.isVisible():
+            self.app.processEvents()
         
         if not selector.selected_mode:
             print("No mode selected. Exiting.")
@@ -2546,7 +2769,18 @@ class FocusLauncher:
         
         # Show time picker
         time_picker = TimePickerDialog()
-        if time_picker.exec_() != QDialog.Accepted:
+        time_picker.show()
+        time_picker.raise_()
+        time_picker.activateWindow()
+        
+        # Wait for dialog to be accepted or rejected using non-modal approach
+        time_picker.dialog_result = None
+        
+        # Process events until dialog is closed
+        while time_picker.dialog_result is None and time_picker.isVisible():
+            self.app.processEvents()
+        
+        if time_picker.dialog_result != QDialog.Accepted:
             print("No duration selected. Exiting.")
             return
         
@@ -2631,7 +2865,18 @@ class FocusLauncher:
         # Show countdown
         countdown = CountdownWindow(selector.selected_mode)
         countdown.show()
-        self.app.exec_()
+        
+        # Wait for countdown to finish using a timer-based approach
+        from PyQt5.QtCore import QTimer
+        wait_timer = QTimer()
+        wait_timer.timeout.connect(lambda: self.check_countdown_finished(countdown, wait_timer))
+        wait_timer.start(100)  # Check every 100ms
+        
+        # Process events while waiting
+        while not countdown.countdown_finished:
+            self.app.processEvents()
+            if not countdown.isVisible():
+                break
         
         # Launch focus mode
         self.launch_focus_mode(selector.selected_mode, selector.use_website_blocking)
@@ -2650,6 +2895,11 @@ class FocusLauncher:
         
         # Keep the application running during the session
         self.app.exec_()
+    
+    def check_countdown_finished(self, countdown, timer):
+        """Helper method to check if countdown is finished"""
+        if countdown.countdown_finished or not countdown.isVisible():
+            timer.stop()
     
     def launch_focus_mode(self, mode, use_website_blocking=False):
         """Launch the actual focus mode scripts"""

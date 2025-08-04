@@ -87,6 +87,9 @@ Examples:
     # Initialize Qt application
     app = QApplication(sys.argv)
     
+    # Prevent app from quitting when all windows are closed (important for background timers)
+    app.setQuitOnLastWindowClosed(False)
+    
     try:
         # Initialize plugin system
         from plugin_system import plugin_manager
@@ -158,7 +161,18 @@ def run_cli_session(app, args):
     elif not args.no_gui:
         # Show duration picker
         time_picker = TimePickerDialog()
-        if time_picker.exec_() != QDialog.Accepted:
+        time_picker.show()
+        time_picker.raise_()
+        time_picker.activateWindow()
+        
+        # Wait for dialog to be accepted or rejected using non-modal approach
+        time_picker.dialog_result = None
+        
+        # Process events until dialog is closed
+        while time_picker.dialog_result is None and time_picker.isVisible():
+            app.processEvents()
+        
+        if time_picker.dialog_result != QDialog.Accepted:
             print("No duration selected. Exiting.")
             return
         session_duration = time_picker.duration_minutes
@@ -217,7 +231,12 @@ def run_cli_session(app, args):
     if not args.no_countdown:
         countdown = CountdownWindow(args.mode)
         countdown.show()
-        app.exec_()
+        
+        # Wait for countdown to finish
+        while not countdown.countdown_finished:
+            app.processEvents()
+            if not countdown.isVisible():
+                break
     
     # Launch focus mode
     launcher = FocusLauncher()

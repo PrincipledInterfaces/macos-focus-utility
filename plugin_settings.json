@@ -1,8 +1,5 @@
 {
-  "enabled_plugins": [
-    "email_assistant",
-    "positive_feedback"
-  ],
+  "enabled_plugins": [],
   "app_settings": {
     "popup_interval_minutes": 1
   }
