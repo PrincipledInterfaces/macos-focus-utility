@@ -2,20 +2,20 @@
 
 A powerful macOS focus and productivity application that helps you stay concentrated by blocking distracting apps and websites while tracking your progress toward session goals.
 
-## ✨ Features
+## Features
 
-- **🎯 Focus Modes**: Pre-configured modes for different types of work (Productivity, Creativity, Social Media Detox)
-- **🚫 Smart App Blocking**: Automatically closes distracting applications
-- **🌐 Website Blocking**: Optional website blocking with admin authentication
-- **🤖 AI Goal Analysis**: Intelligent goal prioritization using Groq AI or local fallback
-- **📊 Progress Tracking**: Real-time session monitoring with interactive goal checkboxes
-- **🔌 Plugin System**: Extensible architecture for custom functionality with comprehensive API
-- **💻 CLI Interface**: Command-line access for automation and scripting
-- **📱 Modern UI**: Animated backgrounds, glass morphism effects, and macOS Sequoia-style design
-- **📈 Session Analytics**: Detailed session summaries with app usage tracking
-- **🔗 API Hooks**: Plugin hooks for session start, end, summary close, and goal changes
-- **🎛️ Session Control API**: Plugins can programmatically end sessions and modify checklist items
-- **⚙️ Settings Management**: Configurable plugin settings with intuitive interface
+- **Focus Modes**: Pre-configured modes for different types of work (Productivity, Creativity, Social Media Detox)
+- **Smart App Blocking**: Automatically closes distracting applications
+- **Website Blocking**: Optional website blocking with admin authentication
+- **AI Goal Analysis**: Intelligent goal prioritization using Groq AI or local fallback
+- **Progress Tracking**: Real-time session monitoring with interactive goal checkboxes
+- **Plugin System**: Extensible architecture for custom functionality with comprehensive API
+- **CLI Interface**: Command-line access for automation and scripting
+- **Modern UI**: Animated backgrounds, glass morphism effects, and macOS Sequoia-style design
+- **Session Analytics**: Detailed session summaries with app usage tracking
+- **API Hooks**: Plugin hooks for session start, end, summary close, and goal changes
+- **Session Control API**: Plugins can programmatically end sessions and modify checklist items
+- **Settings Management**: Configurable plugin settings with intuitive interface
 
 ## Quick Start
 
@@ -96,13 +96,13 @@ python3 focusmode.py --deactivate
 
 The focus utility includes a powerful plugin system that allows you to extend functionality with custom features. 
 
-📖 **[Complete Plugin Development Guide →](PLUGIN_DEVELOPMENT.md)**
+ **[Complete Plugin Development Guide →](PLUGIN_DEVELOPMENT.md)**
 
-### Available Plugins
+### Built In Plugins
 
-- **📧 Email Assistant**: Automatically converts important emails into focus session goals with OAuth authentication
-- **🎉 Positive Feedback**: Provides encouraging messages and celebrates task completion during sessions  
-- **🎮 Control Surface**: Hardware integration for focus session control via custom devices
+- **Email Assistant**: Automatically converts important emails into focus session goals with OAuth authentication
+- **Positive Feedback**: Provides encouraging messages and celebrates task completion during sessions  
+- **Control Surface**: Hardware integration for focus session control via custom devices
 
 ### Quick Plugin Installation
 
@@ -221,8 +221,8 @@ python3 focusmode.py productivity --debug
 
 ## License
 
-This project is open source. See LICENSE file for details.
+This project is open source. 
 
 ---
 
-**💡 Pro Tip**: Use the hybrid CLI mode (`python3 focusmode.py [mode]`) for the perfect balance of automation and control - it skips the mode selection but keeps the helpful duration and goals dialogs.
+**Pro Tip**: Use the hybrid CLI mode (`python3 focusmode.py [mode]`) for the perfect balance of automation and control - it skips the mode selection but keeps the helpful duration and goals dialogs.
