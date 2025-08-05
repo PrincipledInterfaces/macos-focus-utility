@@ -44,6 +44,10 @@ class PluginBase(ABC):
         """Hook called when session ends."""
         pass
     
+    def on_summary_closed(self, session_data: Dict[str, Any]):
+        """Hook called when user closes the session summary screen."""
+        pass
+    
     def on_checklist_item_changed(self, item_text: str, is_checked: bool):
         """Hook called when a checklist item is checked/unchecked."""
         pass
@@ -71,6 +75,17 @@ class PluginBase(ABC):
         """Set a checklist item as checked/unchecked. Returns True if successful."""
         if self._progress_popup:
             return self._progress_popup.set_checklist_item_checked(item_text, checked)
+        return False
+    
+    def end_session(self) -> bool:
+        """End the current focus session. Returns True if successful."""
+        if self._progress_popup:
+            try:
+                self._progress_popup.end_session()
+                return True
+            except Exception as e:
+                print(f"Error ending session: {e}")
+                return False
         return False
 
 class PluginManager(QObject):
@@ -266,6 +281,15 @@ class PluginManager(QObject):
                     self.loaded_plugins[plugin_id].on_session_end(session_data)
                 except Exception as e:
                     print(f"Error in plugin {plugin_id} session_end hook: {e}")
+    
+    def call_summary_closed_hooks(self, session_data: Dict[str, Any]):
+        """Call on_summary_closed hooks for all enabled plugins"""
+        for plugin_id in self.enabled_plugins:
+            if plugin_id in self.loaded_plugins:
+                try:
+                    self.loaded_plugins[plugin_id].on_summary_closed(session_data)
+                except Exception as e:
+                    print(f"Error in plugin {plugin_id} summary_closed hook: {e}")
     
     def call_checklist_item_changed_hooks(self, item_text: str, is_checked: bool):
         """Call on_checklist_item_changed hooks for all enabled plugins"""

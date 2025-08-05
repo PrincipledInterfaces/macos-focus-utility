@@ -415,6 +415,32 @@ def on_session_end(self, session_data: Dict[str, Any]):
     pass
 ```
 
+##### `on_summary_closed(session_data)`
+**NEW:** Called when the user closes the session summary screen.
+```python
+def on_summary_closed(self, session_data: Dict[str, Any]):
+    """
+    Handle summary screen closure.
+    
+    Args:
+        session_data: Dictionary containing final session data
+            - Same structure as on_session_end
+            - This represents the user's final acknowledgment of the session
+            
+    Example:
+        def on_summary_closed(self, session_data: Dict[str, Any]):
+            # Send final notification to external service
+            self.send_session_completed_notification(session_data)
+            
+            # Archive session data
+            self.archive_session(session_data)
+            
+            # Prepare for next session
+            self.reset_session_state()
+    """
+    pass
+```
+
 ##### `on_checklist_item_changed(item_text, is_checked)`
 **NEW:** Called when a checklist item is checked or unchecked during the session.
 ```python
@@ -439,9 +465,9 @@ def on_checklist_item_changed(self, item_text: str, is_checked: bool):
     pass
 ```
 
-### Checklist API Methods
+### Plugin API Methods
 
-**NEW:** These methods allow plugins to interact with the progress checklist during sessions:
+**NEW:** These methods allow plugins to interact with the active focus session:
 
 #### `get_checklist_progress_percentage() -> float`
 Get the current checklist completion percentage.
@@ -514,6 +540,39 @@ def auto_complete_routine_tasks(self):
                 self.set_checklist_item_checked(item, True)
 ```
 
+#### `end_session() -> bool`
+**NEW:** Programmatically end the current focus session.
+```python
+def emergency_end_session(self):
+    """End session in case of emergency or external trigger"""
+    try:
+        success = self.end_session()
+        if success:
+            print("✅ Session ended successfully")
+            self.log_session_termination("plugin_triggered")
+            return True
+        else:
+            print("❌ No active session to end")
+            return False
+    except Exception as e:
+        print(f"Error ending session: {e}")
+        return False
+
+def handle_hardware_button(self, button_id: str):
+    """Example: Hardware button integration"""
+    if button_id == "emergency_stop":
+        # End session immediately
+        self.end_session()
+    elif button_id == "quick_break":
+        # Check if all goals completed before ending
+        progress = self.get_checklist_progress_percentage()
+        if progress >= 80.0:
+            print("Good progress! Ending session.")
+            self.end_session()
+        else:
+            print(f"Only {progress:.1f}% complete. Continue working!")
+```
+
 ---
 
 ## Hook System
@@ -527,9 +586,11 @@ Hooks are predefined points in the application lifecycle where plugins can injec
 1. **Discovery Phase**: Plugins are loaded and initialized
 2. **Goal Analysis Phase**: `on_goals_analyzed` hooks are called
 3. **Session Start Phase**: `on_session_start` hooks are called
-4. **Session Active Phase**: `on_session_update` hooks are called periodically
+4. **Session Active Phase**: `on_session_update` and `on_checklist_item_changed` hooks are called
 5. **Session End Phase**: `on_session_end` hooks are called
-6. **Cleanup Phase**: `cleanup` methods are called
+6. **Summary Display Phase**: Session summary is shown to user
+7. **Summary Closed Phase**: `on_summary_closed` hooks are called when user dismisses summary
+8. **Cleanup Phase**: `cleanup` methods are called
 
 ### Hook Best Practices
 
@@ -1869,7 +1930,90 @@ class Plugin(PluginBase):
         pass
 ```
 
-### 3. Pomodoro Timer Integration
+### 3. Hardware Control Surface Integration
+
+```python
+#!/usr/bin/env python3
+"""
+Control Surface Plugin - Hardware button integration for session control
+"""
+
+import threading
+import time
+from typing import Dict, Any
+from plugin_system import PluginBase
+
+class Plugin(PluginBase):
+    def __init__(self):
+        super().__init__()
+        self.name = "Control Surface"
+        self.version = "1.0.0"
+        self.description = "Hardware button integration for focus session control"
+        self.monitoring_thread = None
+        self.is_monitoring = False
+    
+    def initialize(self) -> bool:
+        # Start hardware monitoring in background thread
+        self.is_monitoring = True
+        self.monitoring_thread = threading.Thread(target=self.monitor_hardware, daemon=True)
+        self.monitoring_thread.start()
+        return True
+    
+    def monitor_hardware(self):
+        """Monitor hardware buttons for session control"""
+        while self.is_monitoring:
+            try:
+                # Check for button presses (placeholder for actual hardware interface)
+                button_state = self.read_hardware_buttons()
+                
+                if button_state.get('emergency_stop'):
+                    print("🛑 Emergency stop button pressed!")
+                    self.end_session()
+                    
+                elif button_state.get('quick_complete'):
+                    progress = self.get_checklist_progress_percentage()
+                    if progress >= 80.0:
+                        print(f"✅ {progress:.1f}% complete - ending session")
+                        self.end_session()
+                    else:
+                        print(f"⏳ Only {progress:.1f}% complete - keep working!")
+                        
+                elif button_state.get('mark_current_done'):
+                    # Mark first incomplete item as done
+                    all_items = self.get_all_checklist_items()
+                    completed = self.get_completed_checklist_items()
+                    
+                    for item in all_items:
+                        if item not in completed:
+                            success = self.set_checklist_item_checked(item, True)
+                            if success:
+                                print(f"✅ Marked complete: {item}")
+                            break
+                
+                time.sleep(0.1)  # Check 10 times per second
+                
+            except Exception as e:
+                print(f"Hardware monitoring error: {e}")
+                time.sleep(1.0)
+    
+    def read_hardware_buttons(self) -> Dict[str, bool]:
+        """Read hardware button states (implement based on your hardware)"""
+        # This would interface with actual hardware
+        # For example: Arduino, Raspberry Pi GPIO, USB HID device, etc.
+        return {
+            'emergency_stop': False,
+            'quick_complete': False, 
+            'mark_current_done': False
+        }
+    
+    def cleanup(self):
+        """Stop hardware monitoring"""
+        self.is_monitoring = False
+        if self.monitoring_thread:
+            self.monitoring_thread.join(timeout=1.0)
+```
+
+### 4. Pomodoro Timer Integration
 
 ```python
 #!/usr/bin/env python3

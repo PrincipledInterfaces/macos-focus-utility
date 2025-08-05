@@ -93,6 +93,8 @@ Examples:
     try:
         # Initialize plugin system
         from plugin_system import plugin_manager
+        plugin_manager.discover_plugins()
+        plugin_manager.load_enabled_plugins()
     except Exception as e:
         print(f"Plugin system initialization error: {e}")
     
@@ -160,7 +162,7 @@ def run_cli_session(app, args):
         session_duration = args.duration
     elif not args.no_gui:
         # Show duration picker
-        time_picker = TimePickerDialog()
+        time_picker = TimePickerDialog(mode=args.mode)
         time_picker.show()
         time_picker.raise_()
         time_picker.activateWindow()

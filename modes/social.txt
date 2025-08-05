@@ -1,11 +1,42 @@
-Mail
 Safari
-FaceTime
-Messages
-Contacts
-Terminal
-Python
-focus_launcher.py
-QtCore
-QtWidgets
-PyQt5
+Chrome
+Firefox
+Edge
+Brave Browser
+Opera
+Instagram
+Facebook
+Twitter
+X
+WhatsApp Desktop
+Telegram Desktop
+Discord
+Slack
+Zoom
+Microsoft Teams
+TikTok
+YouTube
+Netflix
+Hulu
+Disney+
+Amazon Prime Video
+Spotify
+Apple Music
+SoundCloud
+Twitch
+Steam
+Epic Games
+Uplay
+Origin
+Battle.net
+League of Legends
+World of Warcraft
+Fortnite
+Minecraft
+Reddit
+9GAG
+Pinterest
+Snapchat
+LinkedIn
+Medium
+Substack

@@ -1,5 +1,7 @@
 {
-  "enabled_plugins": [],
+  "enabled_plugins": [
+    "control_surface"
+  ],
   "app_settings": {
     "popup_interval_minutes": 1
   }

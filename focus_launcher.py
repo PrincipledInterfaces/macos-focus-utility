@@ -84,9 +84,10 @@ def stop_focus_mode_with_password():
         # Continue anyway - don't let cleanup failures prevent app exit
 
 class TimePickerDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, mode=None):
         super().__init__(parent)
         self.duration_minutes = 0
+        self.mode = mode or "Focus"
         self.init_ui()
     
     def init_ui(self):
@@ -124,6 +125,17 @@ class TimePickerDialog(QDialog):
             color: #1d1d1f;
         """)
         layout.addWidget(title)
+        
+        # Mode label
+        mode_label = QLabel(f"Current Focus Mode: {self.mode.title()}")
+        mode_label.setAlignment(Qt.AlignCenter)
+        mode_label.setStyleSheet("""
+            font-size: 14px;
+            font-weight: 500;
+            color: #007AFF;
+            margin-bottom: 10px;
+        """)
+        layout.addWidget(mode_label)
         
         # Time picker
         time_layout = QHBoxLayout()
@@ -1522,6 +1534,19 @@ class ProgressPopup(QWidget):
         return self._current_message
     
     def update_progress(self):
+        # Check for stop signal file
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        stop_signal_file = os.path.join(script_dir, 'stop_signal')
+        if os.path.exists(stop_signal_file):
+            # Remove the signal file and stop the session
+            try:
+                os.remove(stop_signal_file)
+                print("DEBUG: Stop signal received - ending session")
+                self.stop_focus_mode()
+                return
+            except Exception as e:
+                print(f"Error handling stop signal: {e}")
+        
         elapsed = (datetime.now() - self.start_time).total_seconds() / 60  # minutes
         progress = min(100, (elapsed / self.session_duration) * 100)
         
@@ -1563,21 +1588,40 @@ class ProgressPopup(QWidget):
     
     def track_app_usage(self):
         try:
-            # Get current active app
+            # Get current active app - use display name instead of process name
             result = subprocess.run([
                 'osascript', '-e', 
-                'tell application "System Events" to get name of first application process whose frontmost is true'
+                '''tell application "System Events"
+                    set frontApp to first application process whose frontmost is true
+                    try
+                        set appName to (get name of frontApp)
+                        set bundleID to (get bundle identifier of frontApp)
+                        -- Map common bundle IDs to friendly names
+                        if bundleID is "com.microsoft.VSCode" then
+                            return "Visual Studio Code"
+                        else if bundleID is "com.apple.finder" then
+                            return "Finder" 
+                        else if bundleID is "com.google.Chrome" then
+                            return "Google Chrome"
+                        else if bundleID is "com.apple.Safari" then
+                            return "Safari"
+                        else
+                            return appName
+                        end if
+                    on error
+                        return name of frontApp
+                    end try
+                end tell'''
             ], capture_output=True, text=True)
             
             current_app = result.stdout.strip()
             
-            if current_app and current_app != self.current_app:
-                # App changed, record time for previous app
-                if self.current_app:
-                    if self.current_app in self.app_usage:
-                        self.app_usage[self.current_app] += 5  # 5 seconds
-                    else:
-                        self.app_usage[self.current_app] = 5
+            # Always track time for current app (every 5 seconds)
+            if current_app:
+                if current_app in self.app_usage:
+                    self.app_usage[current_app] += 5  # 5 seconds
+                else:
+                    self.app_usage[current_app] = 5
                 
                 self.current_app = current_app
         except:
@@ -1645,11 +1689,31 @@ class ProgressPopup(QWidget):
         self.popup_timer.stop()
         self.app_timer.stop()
         
+        # Delete current_mode file to indicate session is ended
+        try:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            current_mode_file = os.path.join(script_dir, 'current_mode')
+            if os.path.exists(current_mode_file):
+                os.remove(current_mode_file)
+                print("DEBUG: current_mode file deleted (session complete)")
+            
+            # Also clean up any leftover stop_signal file
+            stop_signal_file = os.path.join(script_dir, 'stop_signal')
+            if os.path.exists(stop_signal_file):
+                os.remove(stop_signal_file)
+                print("DEBUG: stop_signal file cleaned up")
+        except Exception as e:
+            print(f"Error deleting session files: {e}")
+        
+        # Calculate actual session duration
+        actual_duration = (datetime.now() - self.start_time).total_seconds() / 60  # minutes
+        
         # Call session end hooks
         try:
             from plugin_system import plugin_manager
             session_data = {
-                'duration': self.session_duration,
+                'duration': actual_duration,
+                'planned_duration': self.session_duration,
                 'goals': self.goals,
                 'completed_goals': self.completed_goals,
                 'app_usage': self.app_usage,
@@ -1661,10 +1725,11 @@ class ProgressPopup(QWidget):
         
         # Show session summary
         self.summary = SessionSummary(  # Keep reference to prevent garbage collection
-            session_duration=self.session_duration,
+            session_duration=actual_duration,
             goals=self.goals,
             completed_goals=self.completed_goals,
-            app_usage=self.app_usage
+            app_usage=self.app_usage,
+            session_data=session_data
         )
         self.summary.show()
         self.summary.raise_()
@@ -1681,11 +1746,31 @@ class ProgressPopup(QWidget):
         if hasattr(self, 'app_timer'):
             self.app_timer.stop()
         
+        # Delete current_mode file to indicate session is ended
+        try:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            current_mode_file = os.path.join(script_dir, 'current_mode')
+            if os.path.exists(current_mode_file):
+                os.remove(current_mode_file)
+                print("DEBUG: current_mode file deleted (early termination)")
+            
+            # Also clean up any leftover stop_signal file
+            stop_signal_file = os.path.join(script_dir, 'stop_signal')
+            if os.path.exists(stop_signal_file):
+                os.remove(stop_signal_file)
+                print("DEBUG: stop_signal file cleaned up")
+        except Exception as e:
+            print(f"Error deleting session files: {e}")
+        
+        # Calculate actual session duration
+        actual_duration = (datetime.now() - self.start_time).total_seconds() / 60  # minutes
+        
         # Call session end hooks for early termination
         try:
             from plugin_system import plugin_manager
             session_data = {
-                'duration': self.session_duration,
+                'duration': actual_duration,
+                'planned_duration': self.session_duration,
                 'goals': self.goals,
                 'completed_goals': self.completed_goals,
                 'app_usage': self.app_usage,
@@ -1698,10 +1783,11 @@ class ProgressPopup(QWidget):
         
         # Show session summary for premature termination
         self.summary = SessionSummary(  # Keep reference to prevent garbage collection
-            session_duration=self.session_duration,
+            session_duration=actual_duration,
             goals=self.goals,
             completed_goals=self.completed_goals,
-            app_usage=self.app_usage
+            app_usage=self.app_usage,
+            session_data=session_data
         )
         self.summary.show()
         self.summary.raise_()
@@ -1709,72 +1795,20 @@ class ProgressPopup(QWidget):
         
         # Close the popup
         self.close()
+    
+    def end_session(self):
+        """API method for plugins to end the current session"""
+        self.stop_focus_mode()
 
-class AnimatedBackground(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.animation_offset = 0
-        self.setStyleSheet("background: transparent;")
-        
-        # Start animation timer
-        self.animation_timer = QTimer()
-        self.animation_timer.timeout.connect(self.update_animation)
-        self.animation_timer.start(50)  # 20 FPS
-    
-    def update_animation(self):
-        """Update animation frame"""
-        self.animation_offset += 0.02
-        self.update()  # Trigger paintEvent
-    
-    def paintEvent(self, event):
-        """Paint animated blue shapes"""
-        del event  # Unused parameter
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        
-        # Simple animated shapes
-        shapes = [
-            {
-                'x_base': 0.2, 'y_base': 0.3, 'x_range': 0.15, 'y_range': 0.1,
-                'x_speed': 0.3, 'y_speed': 0.4, 'size': 0.25,
-                'color': QColor(59, 130, 246, 120)  # Blue - higher opacity for blur
-            },
-            {
-                'x_base': 0.7, 'y_base': 0.6, 'x_range': 0.12, 'y_range': 0.15,
-                'x_speed': 0.2, 'y_speed': 0.35, 'size': 0.3,
-                'color': QColor(99, 102, 241, 100)  # Indigo
-            },
-            {
-                'x_base': 0.4, 'y_base': 0.8, 'x_range': 0.18, 'y_range': 0.08,
-                'x_speed': 0.25, 'y_speed': 0.3, 'size': 0.2,
-                'color': QColor(139, 92, 246, 90)  # Purple
-            },
-            {
-                'x_base': 0.1, 'y_base': 0.1, 'x_range': 0.1, 'y_range': 0.12,
-                'x_speed': 0.4, 'y_speed': 0.2, 'size': 0.18,
-                'color': QColor(16, 185, 129, 80)  # Teal
-            }
-        ]
-        
-        painter.setPen(Qt.NoPen)
-        
-        for shape in shapes:
-            # Calculate position based on animation offset
-            x = (shape['x_base'] + shape['x_range'] * math.sin(self.animation_offset * shape['x_speed'])) * self.width()
-            y = (shape['y_base'] + shape['y_range'] * math.cos(self.animation_offset * shape['y_speed'])) * self.height()
-            size = shape['size'] * min(self.width(), self.height())
-            
-            # Simple circle shape
-            painter.setBrush(QBrush(shape['color']))
-            painter.drawEllipse(int(x - size/2), int(y - size/2), int(size), int(size))
 
 class SessionSummary(QWidget):
-    def __init__(self, session_duration, goals, completed_goals, app_usage):
+    def __init__(self, session_duration, goals, completed_goals, app_usage, session_data=None):
         super().__init__()
         self.session_duration = session_duration
         self.goals = goals
         self.completed_goals = completed_goals
         self.app_usage = app_usage
+        self.session_data = session_data or {}
         self.init_ui()
     
     def get_encouraging_title(self):
@@ -1820,8 +1854,8 @@ class SessionSummary(QWidget):
         # Black background like CountdownWindow - THIS WORKS
         self.setStyleSheet("background-color: #000000;")
         
-        # Start animation for background shapes
-        self.animation_offset = 0
+        # Initialize animation for background shapes
+        self.animation_offset = 0.0
         self.animation_timer = QTimer()
         self.animation_timer.timeout.connect(self.update_animation)
         self.animation_timer.start(50)  # 20 FPS
@@ -1922,7 +1956,18 @@ class SessionSummary(QWidget):
         """)
         duration_layout.addWidget(duration_title)
         
-        duration_value = QLabel(f"{self.session_duration} minutes")
+        # Format duration nicely
+        total_minutes = int(self.session_duration)
+        seconds = int((self.session_duration - total_minutes) * 60)
+        
+        if total_minutes > 0 and seconds > 0:
+            duration_text = f"{total_minutes} minutes {seconds} seconds"
+        elif total_minutes > 0:
+            duration_text = f"{total_minutes} minutes"
+        else:
+            duration_text = f"{seconds} seconds"
+            
+        duration_value = QLabel(duration_text)
         duration_value.setAlignment(Qt.AlignCenter)
         duration_value.setStyleSheet("""
             color: #ffffff;
@@ -2073,14 +2118,75 @@ class SessionSummary(QWidget):
         
         self.setLayout(main_layout)
     
-    def resizeEvent(self, event):
-        """Handle window resize to update background widget"""
-        super().resizeEvent(event)
-        if hasattr(self, 'background_widget'):
-            self.background_widget.setGeometry(self.rect())
+    def update_animation(self):
+        """Update animation frame"""
+        self.animation_offset += 0.02
+        self.update()  # Trigger paintEvent
+    
+    def paintEvent(self, event):
+        """Paint animated blue shapes"""
+        super().paintEvent(event)
+        
+        # Ensure animation_offset is initialized
+        if not hasattr(self, 'animation_offset'):
+            self.animation_offset = 0.0
+            
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        # Simple animated shapes
+        shapes = [
+            {
+                'x_base': 0.2, 'y_base': 0.3, 'x_range': 0.15, 'y_range': 0.1,
+                'x_speed': 0.3, 'y_speed': 0.4, 'size': 0.25,
+                'color': QColor(59, 130, 246, 120)  # Blue
+            },
+            {
+                'x_base': 0.7, 'y_base': 0.6, 'x_range': 0.12, 'y_range': 0.15,
+                'x_speed': 0.2, 'y_speed': 0.35, 'size': 0.3,
+                'color': QColor(99, 102, 241, 100)  # Indigo
+            },
+            {
+                'x_base': 0.4, 'y_base': 0.8, 'x_range': 0.18, 'y_range': 0.08,
+                'x_speed': 0.25, 'y_speed': 0.3, 'size': 0.2,
+                'color': QColor(139, 92, 246, 90)  # Purple
+            },
+            {
+                'x_base': 0.1, 'y_base': 0.1, 'x_range': 0.1, 'y_range': 0.12,
+                'x_speed': 0.4, 'y_speed': 0.2, 'size': 0.18,
+                'color': QColor(16, 185, 129, 80)  # Teal
+            }
+        ]
+        
+        painter.setPen(Qt.NoPen)
+        
+        for shape in shapes:
+            # Calculate position based on animation offset
+            x = (shape['x_base'] + shape['x_range'] * math.sin(self.animation_offset * shape['x_speed'])) * self.width()
+            y = (shape['y_base'] + shape['y_range'] * math.cos(self.animation_offset * shape['y_speed'])) * self.height()
+            size = shape['size'] * min(self.width(), self.height())
+            
+            # Simple circle shape
+            painter.setBrush(QBrush(shape['color']))
+            painter.drawEllipse(int(x - size/2), int(y - size/2), int(size), int(size))
+    
     
     def close_with_cleanup(self):
         """Close with proper cleanup and exit"""
+        # Call summary closed hooks before cleanup
+        print("DEBUG: close_with_cleanup called")
+        try:
+            from plugin_system import plugin_manager
+            print(f"DEBUG: Plugin manager has {len(plugin_manager.loaded_plugins)} loaded plugins")
+            print(f"DEBUG: Loaded plugins: {list(plugin_manager.loaded_plugins.keys())}")
+            print("DEBUG: Calling summary closed hooks")
+            plugin_manager.call_summary_closed_hooks(self.session_data)
+            print("DEBUG: Summary closed hooks completed")
+        except Exception as e:
+            print(f"Plugin summary closed hook error: {e}")
+            import traceback
+            traceback.print_exc()
+        
         self.close()
         
         # Kill background processes with password dialog if needed
@@ -2768,7 +2874,7 @@ class FocusLauncher:
             return
         
         # Show time picker
-        time_picker = TimePickerDialog()
+        time_picker = TimePickerDialog(mode=selector.selected_mode)
         time_picker.show()
         time_picker.raise_()
         time_picker.activateWindow()
@@ -2945,6 +3051,7 @@ class FocusLauncher:
         """Run the focus mode setup with the provided password"""
         try:
             # Write mode to file
+            print(f"DEBUG: Creating current_mode file for {mode} mode")
             with open('current_mode', 'w') as f:
                 f.write(mode)
             

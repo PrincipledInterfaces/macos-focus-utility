@@ -2,15 +2,20 @@
 
 A powerful macOS focus and productivity application that helps you stay concentrated by blocking distracting apps and websites while tracking your progress toward session goals.
 
-## Features
+## ✨ Features
 
-- **Focus Modes**: Pre-configured modes for different types of work (Productivity, Creativity, Social Detox)
-- **Smart App Blocking**: Automatically closes distracting applications
-- **Website Blocking**: Optional website blocking with admin authentication
-- **AI Goal Analysis**: Intelligent goal prioritization using Groq AI or local fallback
-- **Progress Tracking**: Real-time session monitoring with goal checkboxes
-- **Plugin System**: Extensible architecture for custom functionality
-- **CLI Interface**: Command-line access for automation and scripting
+- **🎯 Focus Modes**: Pre-configured modes for different types of work (Productivity, Creativity, Social Media Detox)
+- **🚫 Smart App Blocking**: Automatically closes distracting applications
+- **🌐 Website Blocking**: Optional website blocking with admin authentication
+- **🤖 AI Goal Analysis**: Intelligent goal prioritization using Groq AI or local fallback
+- **📊 Progress Tracking**: Real-time session monitoring with interactive goal checkboxes
+- **🔌 Plugin System**: Extensible architecture for custom functionality with comprehensive API
+- **💻 CLI Interface**: Command-line access for automation and scripting
+- **📱 Modern UI**: Animated backgrounds, glass morphism effects, and macOS Sequoia-style design
+- **📈 Session Analytics**: Detailed session summaries with app usage tracking
+- **🔗 API Hooks**: Plugin hooks for session start, end, summary close, and goal changes
+- **🎛️ Session Control API**: Plugins can programmatically end sessions and modify checklist items
+- **⚙️ Settings Management**: Configurable plugin settings with intuitive interface
 
 ## Quick Start
 
@@ -82,10 +87,10 @@ python3 focusmode.py --deactivate
 - **Blocks**: Social media, productivity distractions
 - **Allows**: Design tools, inspiration sites, creative applications
 
-### Social Detox Mode
+### Social Media Detox Mode
 - **Purpose**: Digital wellness and deep focus
-- **Blocks**: All social media, messaging, entertainment
-- **Allows**: Essential work applications only
+- **Blocks**: All social media platforms, entertainment sites, gaming, and streaming services
+- **Allows**: Essential work applications and productivity tools only
 
 ## Plugin System
 
@@ -95,8 +100,9 @@ The focus utility includes a powerful plugin system that allows you to extend fu
 
 ### Available Plugins
 
-- **Email Assistant**: Automatically converts important emails into focus session goals
-- **Positive Feedback**: Provides encouraging messages during sessions
+- **📧 Email Assistant**: Automatically converts important emails into focus session goals with OAuth authentication
+- **🎉 Positive Feedback**: Provides encouraging messages and celebrates task completion during sessions  
+- **🎮 Control Surface**: Hardware integration for focus session control via custom devices
 
 ### Quick Plugin Installation
 
@@ -118,14 +124,22 @@ Edit the mode files in the `modes/` directory to customize which apps and websit
 
 ```
 focus-utility/
-├── focus_launcher.py          # Main GUI launcher
+├── focus_launcher.py          # Main GUI launcher with session management
 ├── focusmode.py              # CLI interface
-├── dialogs.py                # Dialog windows
-├── widgets.py                # UI components
-├── session.py                # Session management
-├── plugin_system.py          # Plugin architecture
+├── plugin_system.py          # Plugin architecture and management
+├── plugin_settings_dialog.py # Plugin configuration interface
 ├── modes/                    # Focus mode definitions
+│   ├── productivity.txt      # Productivity mode app list
+│   ├── creativity.txt        # Creativity mode app list
+│   └── social.txt           # Social media detox mode app list
+├── hosts/                    # Website blocking configurations
+│   ├── productivity_hosts    # Productivity mode website blocks
+│   ├── creativity_hosts      # Creativity mode website blocks
+│   └── social_hosts         # Social media detox website blocks
 ├── plugins/                  # Plugin directory
+│   ├── email_assistant/      # Email integration plugin
+│   ├── positive_feedback/    # Encouragement plugin
+│   └── control_surface/      # Hardware control plugin
 ├── CODE_EXPLANATION.md       # Technical documentation
 └── PLUGIN_DEVELOPMENT.md     # Plugin development guide
 ```
@@ -149,9 +163,9 @@ pip install PyQt5 requests
 python3 focusmode.py productivity 90 --goals "Finish quarterly report;Review team PRs;Update project docs"
 ```
 
-### Social Media Break
+### Social Media Detox
 ```bash
-# 30-minute social detox with no distractions
+# 30-minute social media detox with comprehensive blocking
 python3 focusmode.py social 30 --no-gui
 ```
 
