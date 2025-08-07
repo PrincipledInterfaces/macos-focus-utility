@@ -1,6 +1,6 @@
 {
   "enabled_plugins": [
-    "control_surface"
+    "cs_screw"
   ],
   "app_settings": {
     "popup_interval_minutes": 3

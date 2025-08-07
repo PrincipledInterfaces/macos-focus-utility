@@ -1,0 +1,8 @@
+{
+  "name": "cs screw",
+  "version": "1.0.0",
+  "description": "Enables support for the USB cs screw",
+  "main_file": "plugin.py",
+  "author": "Matthew Reichard",
+  "permissions": ["notifications"]
+}

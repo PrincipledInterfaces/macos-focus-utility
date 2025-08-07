@@ -13,13 +13,13 @@ void loop() {
       Serial.println("button1"); //focus on
     }
     isFocused = true;
-    delay(500);
+    delay(100);
   }
   if (digitalRead(12) == LOW) {
     if (isFocused == true) {
       Serial.println("button2"); //focus off
     }
     isFocused = false;
-    delay(500);
+    delay(100);
   }
 }

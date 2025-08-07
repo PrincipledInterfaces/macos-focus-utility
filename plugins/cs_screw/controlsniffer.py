@@ -193,19 +193,8 @@ def button_2_action():
     if is_session_actually_running():
         print("DEBUG: Active session detected, ending current session")
         end_session_event()
-        set_queued_mode("creativity")
     else:
-        print("DEBUG: No active session, starting creativity mode")
-        start_mode("creativity")
-
-def button_3_action():
-    if is_session_actually_running():
-        print("DEBUG: Active session detected, ending current session")
-        end_session_event()
-        set_queued_mode("social")
-    else:
-        print("DEBUG: No active session, starting social mode")
-        start_mode("social")
+        print("DEBUG: No active session")
 
 # Main loop with continuous scanning and reconnection
 print("🔍 Control Surface Monitor starting...")
@@ -253,8 +242,6 @@ while True:
                 button_1_action()
             elif line == "button2":
                 button_2_action()
-            elif line == "button3":
-                button_3_action()
     
     # Small delay to prevent excessive CPU usage
     time.sleep(0.1 if is_esp_connected(ser) else 1.0)  # Longer delay when disconnected
