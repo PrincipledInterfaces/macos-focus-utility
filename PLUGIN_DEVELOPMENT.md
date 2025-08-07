@@ -12,8 +12,9 @@
 9. [Testing and Debugging](#testing-and-debugging)
 10. [Best Practices](#best-practices)
 11. [Advanced Topics](#advanced-topics)
-12. [Example Plugins](#example-plugins)
-13. [Troubleshooting](#troubleshooting)
+12. [Dynamic Checklist Item Injection](#dynamic-checklist-item-injection)
+13. [Example Plugins](#example-plugins)
+14. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -2363,6 +2364,222 @@ class ProfiledPlugin(PluginBase):
         # Your implementation
         return self.process_goals(goals, goals_text)
 ```
+
+---
+
+## Dynamic Checklist Item Injection
+
+One of the most powerful features of the plugin system is the ability to dynamically inject new checklist items into an active focus session. This allows plugins to add tasks based on real-time analysis or external events.
+
+### How Checklist Item Injection Works
+
+The checklist injection mechanism works through direct manipulation of the ProgressPopup's goals list and UI. Here's the complete process:
+
+#### 1. Getting Reference to ProgressPopup
+
+First, your plugin needs access to the current ProgressPopup instance. This is provided through the plugin base class:
+
+```python
+# Available in all hook methods when session is active
+if self._progress_popup:
+    # You can now modify the checklist
+    pass
+```
+
+#### 2. Adding Items to the Goals List
+
+Add your task to the goals list and create the corresponding UI element:
+
+```python
+def add_task_to_checklist(self, task_text: str):
+    """Add a new task to the active session's checklist"""
+    if not self._progress_popup:
+        print("No active session to add task to")
+        return False
+    
+    try:
+        # Add to the goals list
+        formatted_task = f"Email: {task_text}"  # Prefix helps identify source
+        self._progress_popup.goals.append(formatted_task)
+        
+        # Create the checkbox UI element
+        from PyQt5.QtWidgets import QCheckBox, QWidget
+        checkbox = QCheckBox(formatted_task)
+        
+        # Apply the same styling as existing checkboxes
+        checkbox.setStyleSheet("""
+            QCheckBox {
+                font-size: 14px;
+                color: #4a4a4a;
+                spacing: 12px;
+                padding: 8px 0px;
+                font-weight: 500;
+                line-height: 1.4;
+                margin-bottom: 2px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+                border-radius: 9px;
+                border: 2px solid #d1d1d6;
+                background-color: white;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #007aff;
+                border-color: #007aff;
+                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEwIDNMNC41IDguNUwyIDYiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=);
+            }
+        """)
+        
+        # Connect the checkbox to the goal checking handler
+        checkbox.stateChanged.connect(self._progress_popup.goal_checked)
+        
+        # Add to the UI layout
+        if hasattr(self._progress_popup, 'goal_checkboxes'):
+            goals_widget = self._progress_popup.goals_container.findChild(QWidget)
+            if goals_widget:
+                goals_widget.layout().insertWidget(-1, checkbox)  # Insert before stretch
+                self._progress_popup.goal_checkboxes.append(checkbox)
+        
+        print(f"Successfully added task to checklist: {task_text}")
+        return True
+        
+    except Exception as e:
+        print(f"Error adding task to checklist: {e}")
+        return False
+```
+
+#### 3. Best Practices for Injection
+
+**Timing**: Tasks can be injected at different points:
+- During `on_goals_analyzed()` - before session starts
+- During `on_session_start()` or `on_session_update()` - during active session
+- In response to external events (timers, API callbacks, etc.)
+
+**User Interaction**: For tasks discovered during an active session, consider showing a confirmation dialog:
+
+```python
+def show_task_confirmation_dialog(self, task: str):
+    """Show a dialog asking user if they want to add the task"""
+    from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout
+    from PyQt5.QtCore import Qt
+    
+    dialog = QDialog()
+    dialog.setWindowTitle('New Task Found')
+    dialog.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
+    
+    layout = QVBoxLayout()
+    
+    # Task description
+    task_label = QLabel(f"Task: {task}")
+    task_label.setWordWrap(True)
+    layout.addWidget(task_label)
+    
+    # Question
+    question = QLabel("Add this task to your focus session checklist?")
+    layout.addWidget(question)
+    
+    # Buttons
+    button_layout = QHBoxLayout()
+    
+    dismiss_btn = QPushButton("Dismiss")
+    dismiss_btn.clicked.connect(dialog.reject)
+    
+    add_btn = QPushButton("Add to Checklist")
+    add_btn.clicked.connect(dialog.accept)
+    add_btn.setDefault(True)
+    
+    button_layout.addWidget(dismiss_btn)
+    button_layout.addWidget(add_btn)
+    layout.addLayout(button_layout)
+    
+    dialog.setLayout(layout)
+    
+    # Show and handle result
+    if dialog.exec_() == QDialog.Accepted:
+        self.add_task_to_checklist(task)
+```
+
+#### 4. Example: Real-Time Task Injection
+
+Here's a complete example of a plugin that injects tasks based on external monitoring:
+
+```python
+class TaskMonitorPlugin(PluginBase):
+    def __init__(self):
+        super().__init__()
+        self.name = "Task Monitor"
+        self.description = "Monitors external sources for new tasks"
+        
+        # Timer for periodic checking
+        self.check_timer = QTimer()
+        self.check_timer.timeout.connect(self.check_for_new_tasks)
+        
+    def on_session_start(self, session_data: Dict[str, Any]):
+        """Start monitoring for new tasks"""
+        # Check every 5 minutes for new tasks
+        self.check_timer.start(5 * 60 * 1000)
+        
+    def check_for_new_tasks(self):
+        """Periodically check for new tasks to inject"""
+        if not self._progress_popup:
+            return
+            
+        # Your custom logic to discover new tasks
+        new_tasks = self.discover_tasks_from_external_source()
+        
+        for task in new_tasks:
+            # Show confirmation dialog for each new task
+            self.show_task_confirmation_dialog(task)
+    
+    def on_session_end(self, session_data: Dict[str, Any]):
+        """Stop monitoring when session ends"""
+        if self.check_timer.isActive():
+            self.check_timer.stop()
+```
+
+#### 5. Integration Points
+
+**During Goals Analysis**: Return modified goals list from `on_goals_analyzed()`:
+
+```python
+def on_goals_analyzed(self, goals: List[str], goals_text: str) -> List[str]:
+    """Add tasks discovered during initial analysis"""
+    additional_tasks = self.discover_initial_tasks()
+    
+    # Format tasks with prefix for identification
+    formatted_tasks = [f"• MyPlugin: {task}" for task in additional_tasks]
+    
+    return goals + formatted_tasks
+```
+
+**During Active Session**: Use the direct injection method shown above in response to:
+- Timer events
+- External API responses  
+- File system changes
+- User interactions
+- Network events
+
+#### 6. Important Considerations
+
+- **UI Thread Safety**: Always perform injection on the main UI thread
+- **Task Formatting**: Use consistent prefixes to identify task sources
+- **Error Handling**: Always wrap injection code in try-catch blocks
+- **User Experience**: Don't spam users with too many injected tasks
+- **Cleanup**: Remove any timers or background processes when session ends
+
+This injection mechanism is what makes the email plugin so powerful - it can analyze incoming emails during a focus session and dynamically add relevant tasks to the user's checklist without interrupting their flow.
+
+#### 7. Real-World Example: Email Plugin
+
+The email plugin demonstrates advanced checklist injection by:
+
+1. **Initial Analysis**: During `on_goals_analyzed()`, it checks recent emails and adds important tasks
+2. **Real-time Monitoring**: During the session, it periodically checks for new emails 
+3. **User Confirmation**: Shows a styled dialog asking if the user wants to add email tasks
+4. **Dynamic Injection**: Adds tasks to the active checklist with proper UI styling
+
+See `plugins/email_assistant/plugin.py` for the complete implementation.
 
 ---
 

@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout,
                              QLabel, QComboBox, QPushButton, QFrame, QLineEdit, QDialog, QGraphicsDropShadowEffect,
                              QSpinBox, QTextEdit, QCheckBox, QScrollArea, QProgressBar, QGraphicsBlurEffect)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPropertyAnimation, QEasingCurve, QThread
-from PyQt5.QtGui import QFont, QPalette, QColor, QPainter, QPen, QBrush, QPixmap, QRadialGradient
+from PyQt5.QtGui import QFont, QPalette, QColor, QPainter, QPen, QBrush, QPixmap, QRadialGradient, QIcon
 import math
 import json
 import time as time_module
@@ -2992,6 +2992,7 @@ class FocusSelector(QWidget):
 class FocusLauncher:
     def __init__(self):
         self.app = QApplication(sys.argv)
+        self.app.setWindowIcon(QIcon("icon.png"))
         
         # Prevent app from quitting when all windows are closed (important for background timers)
         self.app.setQuitOnLastWindowClosed(False)
