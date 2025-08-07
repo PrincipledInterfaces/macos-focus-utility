@@ -1951,47 +1951,65 @@ class SessionSummary(QWidget):
         except Exception as e:
             print(f"Error closing plugin dialogs: {e}")
         
-        # Black background like CountdownWindow - THIS WORKS
-        self.setStyleSheet("background-color: #000000;")
+        # Modern background with subtle gradient
+        self.setStyleSheet("""
+            QWidget {
+                background: qlineargradient(
+                    x1: 0, y1: 0, x2: 1, y2: 1,
+                    stop: 0 #f5f5f7,
+                    stop: 0.5 #f0f0f2,
+                    stop: 1 #f5f5f7
+                );
+                color: #1d1d1f;
+            }
+        """)
         
-        # Initialize animation for background shapes
-        self.animation_offset = 0.0
-        self.animation_timer = QTimer()
-        self.animation_timer.timeout.connect(self.update_animation)
-        self.animation_timer.start(50)  # 20 FPS
+        # Remove distracting animations for cleaner look
         
-        # Main layout like CountdownWindow
+        # Clean main layout with optimal spacing
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(50, 50, 50, 50)
-        main_layout.setSpacing(30)
+        main_layout.setContentsMargins(60, 60, 60, 60)
+        main_layout.setSpacing(48)
         
-        # Header section
+        # Modern header with subtle glow
         title_text = self.get_encouraging_title()
         title = QLabel(title_text)
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("""
-            color: #007aff;
+            color: #1d1d1f;
             font-size: 48px;
-            font-weight: bold;
-            margin-bottom: 30px;
+            font-weight: 600;
+            letter-spacing: -0.8px;
+            margin-bottom: 8px;
             background: transparent;
             border: none;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
         """)
+        
+        # Add subtle text shadow
+        title_shadow = QGraphicsDropShadowEffect()
+        title_shadow.setBlurRadius(10)
+        title_shadow.setColor(QColor(0, 0, 0, 15))
+        title_shadow.setOffset(0, 2)
+        title.setGraphicsEffect(title_shadow)
+        
         main_layout.addWidget(title)
         
-        # Subtitle
-        subtitle = QLabel("Here's how your focus session went")
+        # Clean subtitle
+        subtitle = QLabel("Session Summary")
         subtitle.setAlignment(Qt.AlignCenter)
         subtitle.setStyleSheet("""
-            color: #ffffff;
-            font-size: 20px;
+            color: #86868b;
+            font-size: 17px;
+            font-weight: 400;
             margin-bottom: 40px;
             background: transparent;
             border: none;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
         """)
         main_layout.addWidget(subtitle)
         
-        # Create scrollable content area
+        # Glass morphism scrollable content area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
@@ -2002,19 +2020,19 @@ class SessionSummary(QWidget):
             }
             QScrollBar:vertical {
                 border: none;
-                background: rgba(255, 255, 255, 0.1);
-                width: 12px;
-                border-radius: 6px;
-                margin: 0;
+                background: rgba(255, 255, 255, 0.2);
+                width: 8px;
+                border-radius: 4px;
+                margin: 4px;
             }
             QScrollBar::handle:vertical {
-                background: rgba(255, 255, 255, 0.3);
-                border-radius: 6px;
-                min-height: 20px;
-                margin: 2px;
+                background: rgba(0, 0, 0, 0.2);
+                border-radius: 4px;
+                min-height: 30px;
+                margin: 1px;
             }
             QScrollBar::handle:vertical:hover {
-                background: rgba(255, 255, 255, 0.5);
+                background: rgba(0, 0, 0, 0.3);
             }
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
                 height: 0px;
@@ -2024,35 +2042,47 @@ class SessionSummary(QWidget):
             }
         """)
         
-        # Stats content widget
+        # Stats content with clean spacing
         stats_widget = QWidget()
         stats_widget.setStyleSheet("background-color: transparent;")
         stats_layout = QVBoxLayout(stats_widget)
-        stats_layout.setSpacing(30)
-        stats_layout.setContentsMargins(20, 20, 20, 20)
+        stats_layout.setSpacing(24)
+        stats_layout.setContentsMargins(20, 0, 20, 20)
         
-        # Session duration
+        # Glass morphism duration card
         duration_container = QFrame()
         duration_container.setStyleSheet("""
             QFrame {
-                background-color: rgba(255, 255, 255, 0.1);
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                border-radius: 20px;
-                padding: 20px;
+                background: rgba(255, 255, 255, 0.7);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 24px;
+                padding: 32px 24px;
+                backdrop-filter: blur(20px);
             }
         """)
+        
+        # Add drop shadow effect
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(30)
+        shadow.setColor(QColor(0, 0, 0, 20))
+        shadow.setOffset(0, 8)
+        duration_container.setGraphicsEffect(shadow)
         
         duration_layout = QVBoxLayout(duration_container)
         duration_layout.setSpacing(10)
         
-        duration_title = QLabel("Session Duration")
+        duration_title = QLabel("Duration")
         duration_title.setAlignment(Qt.AlignCenter)
         duration_title.setStyleSheet("""
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 16px;
+            color: #86868b;
+            font-size: 13px;
             font-weight: 500;
+            letter-spacing: 0.2px;
+            text-transform: uppercase;
             background: transparent;
             border: none;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+            margin-bottom: 4px;
         """)
         duration_layout.addWidget(duration_title)
         
@@ -2070,11 +2100,13 @@ class SessionSummary(QWidget):
         duration_value = QLabel(duration_text)
         duration_value.setAlignment(Qt.AlignCenter)
         duration_value.setStyleSheet("""
-            color: #ffffff;
-            font-size: 28px;
-            font-weight: bold;
+            color: #1d1d1f;
+            font-size: 32px;
+            font-weight: 600;
+            letter-spacing: -0.4px;
             background: transparent;
             border: none;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
         """)
         duration_layout.addWidget(duration_value)
         
@@ -2089,49 +2121,91 @@ class SessionSummary(QWidget):
             goals_container = QFrame()
             goals_container.setStyleSheet("""
                 QFrame {
-                    background-color: rgba(255, 255, 255, 0.1);
-                    border: 1px solid rgba(255, 255, 255, 0.2);
-                    border-radius: 20px;
-                    padding: 20px;
+                    background: rgba(255, 255, 255, 0.7);
+                    border: 1px solid rgba(255, 255, 255, 0.3);
+                    border-radius: 24px;
+                    padding: 32px 24px;
+                    backdrop-filter: blur(20px);
                 }
             """)
+            
+            # Add drop shadow effect
+            goals_shadow = QGraphicsDropShadowEffect()
+            goals_shadow.setBlurRadius(30)
+            goals_shadow.setColor(QColor(0, 0, 0, 20))
+            goals_shadow.setOffset(0, 8)
+            goals_container.setGraphicsEffect(goals_shadow)
             goals_layout = QVBoxLayout(goals_container)
             goals_layout.setSpacing(15)
             
-            goals_title = QLabel("Goals Completed")
+            goals_title = QLabel("Goals")
             goals_title.setAlignment(Qt.AlignCenter)
             goals_title.setStyleSheet("""
-                color: rgba(255, 255, 255, 0.8);
-                font-size: 16px;
+                color: #86868b;
+                font-size: 13px;
                 font-weight: 500;
+                letter-spacing: 0.2px;
+                text-transform: uppercase;
                 background: transparent;
                 border: none;
+                font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+                margin-bottom: 4px;
             """)
             goals_layout.addWidget(goals_title)
             
-            goals_value = QLabel(f"{completed_count}/{total_count} ({completion_rate:.0f}%)")
+            goals_value = QLabel(f"{completed_count}/{total_count}")
             goals_value.setAlignment(Qt.AlignCenter)
             goals_value.setStyleSheet("""
-                color: #ffffff;
-                font-size: 28px;
-                font-weight: bold;
+                color: #1d1d1f;
+                font-size: 32px;
+                font-weight: 600;
+                letter-spacing: -0.4px;
                 background: transparent;
                 border: none;
+                font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+                margin-bottom: 16px;
             """)
             goals_layout.addWidget(goals_value)
             
             # Individual goals list
             for goal in self.goals:
                 is_completed = goal in self.completed_goals
-                goal_item = QLabel(f"{'✅' if is_completed else '⏳'} {goal.replace('• ', '')}")
-                goal_item.setWordWrap(True)
-                goal_item.setStyleSheet(f"""
-                    color: {'rgba(255, 255, 255, 0.9)' if is_completed else 'rgba(255, 255, 255, 0.6)'};
+                # Create a horizontal layout for each goal
+                goal_container = QWidget()
+                goal_layout = QHBoxLayout(goal_container)
+                goal_layout.setContentsMargins(0, 4, 0, 4)
+                
+                # Status indicator with glow effect
+                status_icon = QLabel("●")
+                status_icon.setStyleSheet(f"""
+                    color: {'#34c759' if is_completed else 'rgba(199, 199, 204, 0.6)'};
                     font-size: 14px;
-                    padding: 5px;
+                    margin-right: 8px;
+                """)
+                
+                if is_completed:
+                    # Add subtle glow to completed items
+                    status_glow = QGraphicsDropShadowEffect()
+                    status_glow.setBlurRadius(8)
+                    status_glow.setColor(QColor(52, 199, 89, 100))
+                    status_glow.setOffset(0, 0)
+                    status_icon.setGraphicsEffect(status_glow)
+                
+                # Goal text
+                goal_text = QLabel(goal.replace('• ', ''))
+                goal_text.setWordWrap(True)
+                goal_text.setStyleSheet(f"""
+                    color: {'#1d1d1f' if is_completed else '#86868b'};
+                    font-size: 15px;
+                    font-weight: 400;
+                    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
                     {'text-decoration: line-through;' if is_completed else ''}
                 """)
-                goals_layout.addWidget(goal_item)
+                
+                goal_layout.addWidget(status_icon)
+                goal_layout.addWidget(goal_text)
+                goal_layout.addStretch()
+                goals_layout.addWidget(goal_container)
             
             stats_layout.addWidget(goals_container)
         
@@ -2140,24 +2214,35 @@ class SessionSummary(QWidget):
             apps_container = QFrame()
             apps_container.setStyleSheet("""
                 QFrame {
-                    background-color: rgba(255, 255, 255, 0.1);
-                    border: 1px solid rgba(255, 255, 255, 0.2);
-                    border-radius: 20px;
-                    padding: 20px;
+                    background: rgba(255, 255, 255, 0.7);
+                    border: 1px solid rgba(255, 255, 255, 0.3);
+                    border-radius: 24px;
+                    padding: 32px 24px;
+                    backdrop-filter: blur(20px);
                 }
             """)
+            
+            # Add drop shadow effect
+            apps_shadow = QGraphicsDropShadowEffect()
+            apps_shadow.setBlurRadius(30)
+            apps_shadow.setColor(QColor(0, 0, 0, 20))
+            apps_shadow.setOffset(0, 8)
+            apps_container.setGraphicsEffect(apps_shadow)
             apps_layout = QVBoxLayout(apps_container)
             apps_layout.setSpacing(10)
             
-            apps_title = QLabel("Top Apps Used")
+            apps_title = QLabel("Top Apps")
             apps_title.setAlignment(Qt.AlignCenter)
             apps_title.setStyleSheet("""
-                color: rgba(255, 255, 255, 0.8);
-                font-size: 16px;
+                color: #86868b;
+                font-size: 13px;
                 font-weight: 500;
-                margin-bottom: 10px;
+                letter-spacing: 0.2px;
+                text-transform: uppercase;
+                margin-bottom: 16px;
                 background: transparent;
                 border: none;
+                font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
             """)
             apps_layout.addWidget(apps_title)
             
@@ -2171,11 +2256,13 @@ class SessionSummary(QWidget):
                 remaining_seconds = seconds % 60
                 time_str = f"{minutes}m {remaining_seconds}s" if minutes > 0 else f"{remaining_seconds}s"
                 
-                app_item = QLabel(f"{i+1}. {app}: {time_str}")
+                app_item = QLabel(f"{app} — {time_str}")
                 app_item.setStyleSheet("""
-                    color: rgba(255, 255, 255, 0.8);
-                    font-size: 14px;
-                    padding: 3px;
+                    color: #1d1d1f;
+                    font-size: 15px;
+                    font-weight: 400;
+                    padding: 4px 0px;
+                    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
                 """)
                 apps_layout.addWidget(app_item)
             
@@ -2186,24 +2273,35 @@ class SessionSummary(QWidget):
             websites_container = QFrame()
             websites_container.setStyleSheet("""
                 QFrame {
-                    background-color: rgba(255, 255, 255, 0.1);
-                    border: 1px solid rgba(255, 255, 255, 0.2);
-                    border-radius: 20px;
-                    padding: 20px;
+                    background: rgba(255, 255, 255, 0.7);
+                    border: 1px solid rgba(255, 255, 255, 0.3);
+                    border-radius: 24px;
+                    padding: 32px 24px;
+                    backdrop-filter: blur(20px);
                 }
             """)
+            
+            # Add drop shadow effect
+            websites_shadow = QGraphicsDropShadowEffect()
+            websites_shadow.setBlurRadius(30)
+            websites_shadow.setColor(QColor(0, 0, 0, 20))
+            websites_shadow.setOffset(0, 8)
+            websites_container.setGraphicsEffect(websites_shadow)
             websites_layout = QVBoxLayout(websites_container)
             websites_layout.setSpacing(10)
             
-            websites_title = QLabel("Top Websites Visited")
+            websites_title = QLabel("Top Websites")
             websites_title.setAlignment(Qt.AlignCenter)
             websites_title.setStyleSheet("""
-                color: rgba(255, 255, 255, 0.8);
-                font-size: 16px;
+                color: #86868b;
+                font-size: 13px;
                 font-weight: 500;
-                margin-bottom: 10px;
+                letter-spacing: 0.2px;
+                text-transform: uppercase;
+                margin-bottom: 16px;
                 background: transparent;
                 border: none;
+                font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
             """)
             websites_layout.addWidget(websites_title)
             
@@ -2214,11 +2312,13 @@ class SessionSummary(QWidget):
                 remaining_seconds = seconds % 60
                 time_str = f"{minutes}m {remaining_seconds}s" if minutes > 0 else f"{remaining_seconds}s"
                 
-                website_item = QLabel(f"{i+1}. {website}: {time_str}")
+                website_item = QLabel(f"{website} — {time_str}")
                 website_item.setStyleSheet("""
-                    color: rgba(255, 255, 255, 0.8);
-                    font-size: 14px;
-                    padding: 3px;
+                    color: #1d1d1f;
+                    font-size: 15px;
+                    font-weight: 400;
+                    padding: 4px 0px;
+                    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
                 """)
                 websites_layout.addWidget(website_item)
             
@@ -2227,91 +2327,56 @@ class SessionSummary(QWidget):
         scroll.setWidget(stats_widget)
         main_layout.addWidget(scroll)
         
-        # Close button
-        close_btn = QPushButton("Close Summary")
+        # Glass morphism continue button
+        close_btn = QPushButton("Continue")
         close_btn.clicked.connect(self.close_with_cleanup)
         close_btn.setStyleSheet("""
             QPushButton {
-                padding: 15px 40px;
-                font-size: 16px;
-                font-weight: 600;
-                border: 2px solid #007aff;
-                border-radius: 25px;
-                background-color: rgba(0, 122, 255, 0.2);
+                padding: 16px 40px;
+                font-size: 17px;
+                font-weight: 500;
+                border: 1px solid rgba(0, 122, 255, 0.3);
+                border-radius: 20px;
+                background: rgba(0, 122, 255, 0.8);
                 color: #ffffff;
+                font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+                backdrop-filter: blur(20px);
             }
             QPushButton:hover {
-                background-color: rgba(0, 122, 255, 0.4);
+                background: rgba(0, 122, 255, 0.9);
+                border: 1px solid rgba(0, 122, 255, 0.5);
             }
             QPushButton:pressed {
-                background-color: rgba(0, 122, 255, 0.6);
+                background: rgba(0, 122, 255, 1.0);
+                transform: scale(0.98);
             }
         """)
+        
+        # Add button shadow
+        btn_shadow = QGraphicsDropShadowEffect()
+        btn_shadow.setBlurRadius(20)
+        btn_shadow.setColor(QColor(0, 122, 255, 60))
+        btn_shadow.setOffset(0, 4)
+        close_btn.setGraphicsEffect(btn_shadow)
         main_layout.addWidget(close_btn, 0, Qt.AlignCenter)
         
-        # ESC instruction
+        # Clean ESC instruction
         esc_label = QLabel("Press ESC to close")
         esc_label.setAlignment(Qt.AlignCenter)
         esc_label.setStyleSheet("""
             color: #86868b;
-            font-size: 16px;
-            margin-top: 20px;
+            font-size: 13px;
+            font-weight: 400;
+            margin-top: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
         """)
         main_layout.addWidget(esc_label)
         
         self.setLayout(main_layout)
     
-    def update_animation(self):
-        """Update animation frame"""
-        self.animation_offset += 0.02
-        self.update()  # Trigger paintEvent
-    
     def paintEvent(self, event):
-        """Paint animated blue shapes"""
+        """Clean paint event without distracting animations"""
         super().paintEvent(event)
-        
-        # Ensure animation_offset is initialized
-        if not hasattr(self, 'animation_offset'):
-            self.animation_offset = 0.0
-            
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        
-        # Simple animated shapes
-        shapes = [
-            {
-                'x_base': 0.2, 'y_base': 0.3, 'x_range': 0.15, 'y_range': 0.1,
-                'x_speed': 0.3, 'y_speed': 0.4, 'size': 0.25,
-                'color': QColor(59, 130, 246, 120)  # Blue
-            },
-            {
-                'x_base': 0.7, 'y_base': 0.6, 'x_range': 0.12, 'y_range': 0.15,
-                'x_speed': 0.2, 'y_speed': 0.35, 'size': 0.3,
-                'color': QColor(99, 102, 241, 100)  # Indigo
-            },
-            {
-                'x_base': 0.4, 'y_base': 0.8, 'x_range': 0.18, 'y_range': 0.08,
-                'x_speed': 0.25, 'y_speed': 0.3, 'size': 0.2,
-                'color': QColor(139, 92, 246, 90)  # Purple
-            },
-            {
-                'x_base': 0.1, 'y_base': 0.1, 'x_range': 0.1, 'y_range': 0.12,
-                'x_speed': 0.4, 'y_speed': 0.2, 'size': 0.18,
-                'color': QColor(16, 185, 129, 80)  # Teal
-            }
-        ]
-        
-        painter.setPen(Qt.NoPen)
-        
-        for shape in shapes:
-            # Calculate position based on animation offset
-            x = (shape['x_base'] + shape['x_range'] * math.sin(self.animation_offset * shape['x_speed'])) * self.width()
-            y = (shape['y_base'] + shape['y_range'] * math.cos(self.animation_offset * shape['y_speed'])) * self.height()
-            size = shape['size'] * min(self.width(), self.height())
-            
-            # Simple circle shape
-            painter.setBrush(QBrush(shape['color']))
-            painter.drawEllipse(int(x - size/2), int(y - size/2), int(size), int(size))
     
     
     def close_with_cleanup(self):

@@ -134,7 +134,7 @@ def start_mode(mode):
         
         print(f"Starting {mode} mode in hybrid mode (with UI)...")
         # Use hybrid mode - shows duration picker and goals dialog
-        process = subprocess.Popen(['python3', focusmode_path, mode], 
+        process = subprocess.Popen([sys.executable, focusmode_path, mode], 
                         cwd=script_dir,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE)

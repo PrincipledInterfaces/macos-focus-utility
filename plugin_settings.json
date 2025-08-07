@@ -1,10 +1,8 @@
 {
   "enabled_plugins": [
-    "control_surface",
-    "positive_feedback",
-    "email_assistant"
+    "control_surface"
   ],
   "app_settings": {
-    "popup_interval_minutes": 10
+    "popup_interval_minutes": 3
   }
 }
