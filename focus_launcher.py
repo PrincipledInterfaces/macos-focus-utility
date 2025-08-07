@@ -1126,6 +1126,11 @@ class ProgressPopup(QWidget):
         self.completed_goals = set()
         self.app_usage = {}
         self.current_app = ""
+        self.website_usage = {}
+        self.last_browser_check = self.start_time
+        
+        # Clear browser tabs log for fresh session tracking
+        self.clear_browser_tabs_log()
         
         self.init_ui()
         self.setup_timers()
@@ -1459,6 +1464,7 @@ class ProgressPopup(QWidget):
         # App tracking timer
         self.app_timer = QTimer()
         self.app_timer.timeout.connect(self.track_app_usage)
+        self.app_timer.timeout.connect(self.track_website_usage)
         self.app_timer.start(5000)  # Every 5 seconds
         
         # Call session start hooks
@@ -1627,6 +1633,97 @@ class ProgressPopup(QWidget):
         except:
             pass
     
+    def track_website_usage(self):
+        """Track website usage by parsing browser_tabs.log"""
+        try:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            log_file = os.path.join(script_dir, 'browser_tabs.log')
+            
+            if not os.path.exists(log_file):
+                return
+            
+            current_time = datetime.now()
+            # Only check entries since last check
+            with open(log_file, 'r') as f:
+                for line in f:
+                    if line.strip():
+                        # Parse timestamp from log entry
+                        try:
+                            timestamp_str = line.split(']')[0][1:]  # Extract timestamp without brackets
+                            entry_time = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+                            
+                            # Only process entries since last check
+                            if entry_time <= self.last_browser_check:
+                                continue
+                                
+                            # Extract browser and tabs
+                            if 'Chrome Tabs:' in line or 'Safari Tabs:' in line:
+                                tabs_part = line.split('Tabs: ', 1)[1].strip()
+                                if tabs_part and tabs_part != 'Start Page':
+                                    # Split tabs by comma and extract domains
+                                    tabs = [tab.strip() for tab in tabs_part.split(',')]
+                                    for tab in tabs:
+                                        if tab and tab != 'Start Page':
+                                            # Extract domain from tab title (simplified)
+                                            domain = self.extract_domain_from_tab(tab)
+                                            if domain:
+                                                # Add 5 seconds for this website
+                                                if domain in self.website_usage:
+                                                    self.website_usage[domain] += 5
+                                                else:
+                                                    self.website_usage[domain] = 5
+                        except:
+                            continue
+                            
+            self.last_browser_check = current_time
+        except:
+            pass
+    
+    def extract_domain_from_tab(self, tab_title):
+        """Extract domain from browser tab title"""
+        # Simple domain extraction based on common patterns
+        domain_mappings = {
+            'github': 'GitHub',
+            'claude': 'Claude AI',
+            'anthropic': 'Anthropic',
+            'google': 'Google',
+            'stackoverflow': 'Stack Overflow',
+            'youtube': 'YouTube',
+            'gmail': 'Gmail',
+            'outlook': 'Outlook',
+            'slack': 'Slack',
+            'twitter': 'Twitter',
+            'facebook': 'Facebook',
+            'linkedin': 'LinkedIn',
+            'reddit': 'Reddit',
+            'docs.google': 'Google Docs',
+            'drive.google': 'Google Drive'
+        }
+        
+        tab_lower = tab_title.lower()
+        for keyword, domain in domain_mappings.items():
+            if keyword in tab_lower:
+                return domain
+        
+        # If no mapping found, use first part of tab title
+        if len(tab_title) > 30:
+            return tab_title[:30] + '...'
+        return tab_title
+    
+    def clear_browser_tabs_log(self):
+        """Clear the browser tabs log file to start fresh for this session"""
+        try:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            log_file = os.path.join(script_dir, 'browser_tabs.log')
+            
+            # Clear the log file by opening it in write mode
+            with open(log_file, 'w') as f:
+                f.write('')  # Write empty content
+            
+            print("DEBUG: Browser tabs log cleared for new session")
+        except Exception as e:
+            print(f"DEBUG: Error clearing browser tabs log: {e}")
+    
     def show_popup(self):
         # Reset encouraging message for each popup to ensure it only shows one per popup
         if hasattr(self, '_current_message'):
@@ -1729,6 +1826,7 @@ class ProgressPopup(QWidget):
             goals=self.goals,
             completed_goals=self.completed_goals,
             app_usage=self.app_usage,
+            website_usage=self.website_usage,
             session_data=session_data
         )
         self.summary.show()
@@ -1787,6 +1885,7 @@ class ProgressPopup(QWidget):
             goals=self.goals,
             completed_goals=self.completed_goals,
             app_usage=self.app_usage,
+            website_usage=self.website_usage,
             session_data=session_data
         )
         self.summary.show()
@@ -1802,12 +1901,13 @@ class ProgressPopup(QWidget):
 
 
 class SessionSummary(QWidget):
-    def __init__(self, session_duration, goals, completed_goals, app_usage, session_data=None):
+    def __init__(self, session_duration, goals, completed_goals, app_usage, website_usage=None, session_data=None):
         super().__init__()
         self.session_duration = session_duration
         self.goals = goals
         self.completed_goals = completed_goals
         self.app_usage = app_usage
+        self.website_usage = website_usage or {}
         self.session_data = session_data or {}
         self.init_ui()
     
@@ -2080,6 +2180,49 @@ class SessionSummary(QWidget):
                 apps_layout.addWidget(app_item)
             
             stats_layout.addWidget(apps_container)
+        
+        # Top websites if we have usage data
+        if self.website_usage:
+            websites_container = QFrame()
+            websites_container.setStyleSheet("""
+                QFrame {
+                    background-color: rgba(255, 255, 255, 0.1);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 20px;
+                    padding: 20px;
+                }
+            """)
+            websites_layout = QVBoxLayout(websites_container)
+            websites_layout.setSpacing(10)
+            
+            websites_title = QLabel("Top Websites Visited")
+            websites_title.setAlignment(Qt.AlignCenter)
+            websites_title.setStyleSheet("""
+                color: rgba(255, 255, 255, 0.8);
+                font-size: 16px;
+                font-weight: 500;
+                margin-bottom: 10px;
+                background: transparent;
+                border: none;
+            """)
+            websites_layout.addWidget(websites_title)
+            
+            # Show top 5 websites
+            top_websites = sorted(self.website_usage.items(), key=lambda x: x[1], reverse=True)[:5]
+            for i, (website, seconds) in enumerate(top_websites):
+                minutes = seconds // 60
+                remaining_seconds = seconds % 60
+                time_str = f"{minutes}m {remaining_seconds}s" if minutes > 0 else f"{remaining_seconds}s"
+                
+                website_item = QLabel(f"{i+1}. {website}: {time_str}")
+                website_item.setStyleSheet("""
+                    color: rgba(255, 255, 255, 0.8);
+                    font-size: 14px;
+                    padding: 3px;
+                """)
+                websites_layout.addWidget(website_item)
+            
+            stats_layout.addWidget(websites_container)
         
         scroll.setWidget(stats_widget)
         main_layout.addWidget(scroll)
