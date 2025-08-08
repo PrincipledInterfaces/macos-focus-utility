@@ -1,3 +1,5 @@
+   #BTW this design is totally stupid, i could just put microswitches under the bolts and no crazy denoising would be necessary#                 
+                    
                       +5V
                        |
                       [5k]

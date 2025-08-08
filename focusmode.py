@@ -10,7 +10,7 @@ import sys
 import argparse
 import os
 from PyQt5.QtWidgets import QApplication, QDialog
-from focus_launcher import TimePickerDialog, GoalsDialog, GoalsReviewDialog, CountdownWindow, FocusLauncher, PluginTaskDialog, FinalGoalsDialog
+from focus_launcher import TimePickerDialog, GoalsDialog, GoalsReviewDialog, CountdownWindow, FocusLauncher, PluginTaskDialog, FinalGoalsDialog, get_app_icon
 
 
 def main():
@@ -86,6 +86,9 @@ Examples:
     
     # Initialize Qt application
     app = QApplication(sys.argv)
+    
+    # Set application icon
+    app.setWindowIcon(get_app_icon())
     
     # Prevent app from quitting when all windows are closed (important for background timers)
     app.setQuitOnLastWindowClosed(False)

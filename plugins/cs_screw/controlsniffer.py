@@ -132,7 +132,8 @@ def check_and_start_queued_mode():
     """Check if we're waiting for a session to end and start queued mode if ready"""
     global waiting_for_session_end, queued_mode, session_end_start_time
     
-    if not waiting_for_session_end or not queued_mode:
+    # If we're not waiting for anything, just return
+    if not waiting_for_session_end:
         return
     
     # Check if session has actually ended (no focus process running)
@@ -142,16 +143,21 @@ def check_and_start_queued_mode():
         focus_process_running = bool(result.stdout.strip())
         
         if not focus_process_running:
-            # Session has ended, wait a bit more for summary to be closed, then start queued mode
+            # Session has ended, wait a bit more for summary to be closed
             import time
             elapsed = time.time() - session_end_start_time
             if elapsed > 3:  # Wait at least 3 seconds after session ended
-                print(f"DEBUG: Session ended, starting queued mode: {queued_mode}")
-                mode_to_start = queued_mode
+                if queued_mode:  # Only start if there's a queued mode
+                    print(f"DEBUG: Session ended, starting queued mode: {queued_mode}")
+                    mode_to_start = queued_mode
+                    start_mode(mode_to_start)
+                else:
+                    print("DEBUG: Session ended, no queued mode to start")
+                
+                # Reset state regardless of whether we had a queued mode
                 queued_mode = None
                 waiting_for_session_end = False
                 session_end_start_time = None
-                start_mode(mode_to_start)
     except:
         pass
 
@@ -180,6 +186,15 @@ def start_mode(mode):
         import traceback
         traceback.print_exc()
 
+def end_session_only():
+    """End current session without queueing another"""
+    global waiting_for_session_end, session_end_start_time
+    print("DEBUG: Ending session without queuing another mode")
+    end_session_event()
+    waiting_for_session_end = True  # Track that we're waiting for session to end
+    session_end_start_time = time.time()
+    # Note: queued_mode remains None
+
 def button_1_action():
     if is_session_actually_running():
         print("DEBUG: Active session detected, ending current session")
@@ -192,7 +207,7 @@ def button_1_action():
 def button_2_action():
     if is_session_actually_running():
         print("DEBUG: Active session detected, ending current session")
-        end_session_event()
+        end_session_only()  # End without queueing another mode
     else:
         print("DEBUG: No active session")
 

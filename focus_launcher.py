@@ -6,7 +6,8 @@ import subprocess
 import time
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QComboBox, QPushButton, QFrame, QLineEdit, QDialog, QGraphicsDropShadowEffect,
-                             QSpinBox, QTextEdit, QCheckBox, QScrollArea, QProgressBar, QGraphicsBlurEffect)
+                             QSpinBox, QTextEdit, QCheckBox, QScrollArea, QProgressBar, QGraphicsBlurEffect,
+                             QSystemTrayIcon, QMenu, QAction)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPropertyAnimation, QEasingCurve, QThread
 from PyQt5.QtGui import QFont, QPalette, QColor, QPainter, QPen, QBrush, QPixmap, QRadialGradient, QIcon
 import math
@@ -14,6 +15,43 @@ import json
 import time as time_module
 from datetime import datetime, timedelta
 from typing import List
+
+def get_app_icon():
+    """Get the application icon for dock/window display"""
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        icon_path = os.path.join(script_dir, 'icon.png')
+        
+        if os.path.exists(icon_path):
+            icon = QIcon(icon_path)
+            # Verify the icon loaded successfully
+            if not icon.isNull():
+                return icon
+        
+        # Create a simple fallback icon
+        icon_pixmap = QPixmap(32, 32)
+        icon_pixmap.fill(Qt.transparent)
+        
+        painter = QPainter(icon_pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        # Draw blue circle
+        painter.setBrush(QBrush(QColor(0, 122, 255)))
+        painter.setPen(Qt.NoPen)
+        painter.drawEllipse(4, 4, 24, 24)
+        
+        # Draw white "F" in center
+        painter.setPen(Qt.white)
+        painter.setFont(QFont("Arial", 16, QFont.Bold))
+        painter.drawText(icon_pixmap.rect(), Qt.AlignCenter, "F")
+        painter.end()
+        
+        return QIcon(icon_pixmap)
+    
+    except Exception as e:
+        print(f"Warning: Could not load app icon: {e}")
+        # Return empty icon if everything fails
+        return QIcon()
 
 def get_popup_interval_setting():
     """Get the popup interval setting from JSON file"""
@@ -92,6 +130,7 @@ class TimePickerDialog(QDialog):
     
     def init_ui(self):
         self.setWindowTitle('Session Duration')
+        self.setWindowIcon(get_app_icon())
         self.setFixedSize(400, 250)
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setAttribute(Qt.WA_ShowWithoutActivating, False)  # Allow activation
@@ -298,6 +337,7 @@ class GoalsDialog(QDialog):
     
     def init_ui(self):
         self.setWindowTitle('Session Goals')
+        self.setWindowIcon(get_app_icon())
         self.setFixedSize(500, 400)
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
         
@@ -596,6 +636,7 @@ class GoalsReviewDialog(QDialog):
     
     def init_ui(self):
         self.setWindowTitle('Review Your Goals')
+        self.setWindowIcon(get_app_icon())
         self.setFixedSize(500, 400)
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
         
@@ -762,6 +803,7 @@ class PluginTaskDialog(QDialog):
     
     def init_ui(self):
         self.setWindowTitle('Additional Tasks')
+        self.setWindowIcon(get_app_icon())
         self.setFixedSize(600, 500)
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
         
@@ -967,6 +1009,7 @@ class FinalGoalsDialog(QDialog):
     
     def init_ui(self):
         self.setWindowTitle('Updated Focus Goals')
+        self.setWindowIcon(get_app_icon())
         self.setFixedSize(500, 400)
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
         
@@ -1133,10 +1176,12 @@ class ProgressPopup(QWidget):
         self.clear_browser_tabs_log()
         
         self.init_ui()
+        self.setup_system_tray()
         self.setup_timers()
     
     def init_ui(self):
         self.setWindowTitle('Focus Session')
+        self.setWindowIcon(get_app_icon())
         # Dynamic height based on number of goals
         base_height = 360
         num_goals = min(len(self.goals), 3) if self.goals else 0
@@ -1481,6 +1526,111 @@ class ProgressPopup(QWidget):
         
         # Initial popup
         self.show_popup()
+    
+    def setup_system_tray(self):
+        """Setup system tray icon for macOS menu bar"""
+        # Check if system tray is available
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            print("System tray not available on this system")
+            return
+        
+        # Create tray icon
+        self.tray_icon = QSystemTrayIcon(self)
+        
+        # Try to load icon from file, fall back to programmatic icon
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        icon_path = os.path.join(script_dir, 'tray_icon.png')  # You can change this filename
+        
+        if os.path.exists(icon_path):
+            # Use custom icon file with template mode for automatic dark/light adaptation
+            icon = QIcon(icon_path)
+            # Enable template mode for automatic color adaptation on macOS
+            icon.setIsMask(True)
+            self.tray_icon.setIcon(icon)
+        else:
+            # Fall back to programmatic icon
+            icon_pixmap = QPixmap(16, 16)
+            icon_pixmap.fill(Qt.transparent)
+            
+            painter = QPainter(icon_pixmap)
+            painter.setRenderHint(QPainter.Antialiasing)
+            
+            # Draw black circle (will adapt to system theme in template mode)
+            painter.setBrush(QBrush(Qt.black))
+            painter.setPen(Qt.NoPen)
+            painter.drawEllipse(2, 2, 12, 12)  # Slightly smaller for better appearance
+            painter.end()
+            
+            # Use template mode for automatic color adaptation
+            fallback_icon = QIcon(icon_pixmap)
+            fallback_icon.setIsMask(True)
+            self.tray_icon.setIcon(fallback_icon)
+        
+        # Create context menu
+        tray_menu = QMenu()
+        
+        # Show/Hide action
+        self.show_hide_action = QAction("Show Progress", self)
+        self.show_hide_action.triggered.connect(self.toggle_visibility)
+        tray_menu.addAction(self.show_hide_action)
+        
+        tray_menu.addSeparator()
+        
+        # End session action
+        end_action = QAction("End Session", self)
+        end_action.triggered.connect(self.stop_focus_mode)
+        tray_menu.addAction(end_action)
+        
+        self.tray_icon.setContextMenu(tray_menu)
+        
+        # Connect click to show/hide
+        self.tray_icon.activated.connect(self.tray_icon_clicked)
+        
+        # Show the tray icon
+        self.tray_icon.show()
+        
+        # Track visibility state
+        self.is_visible = True
+    
+    def tray_icon_clicked(self, reason):
+        """Handle system tray icon clicks"""
+        if reason == QSystemTrayIcon.Trigger:  # Left click
+            self.toggle_visibility()
+    
+    def toggle_visibility(self):
+        """Toggle progress dialog visibility"""
+        if self.is_visible:
+            self.hide()
+            self.show_hide_action.setText("Show Progress")
+            self.is_visible = False
+        else:
+            self.show()
+            self.raise_()
+            self.activateWindow()
+            self.show_hide_action.setText("Hide Progress")
+            self.is_visible = True
+    
+    def closeEvent(self, event):
+        """Override close event to hide to tray instead of closing"""
+        if hasattr(self, 'tray_icon') and self.tray_icon.isVisible():
+            # Hide to tray instead of closing
+            event.ignore()
+            self.hide()
+            self.show_hide_action.setText("Show Progress")
+            self.is_visible = False
+            
+            # Show tray message on first hide
+            if not hasattr(self, '_tray_message_shown'):
+                self.tray_icon.showMessage(
+                    "Focus Session",
+                    "Session continues in background. Click icon to show progress.",
+                    QSystemTrayIcon.Information,
+                    3000
+                )
+                self._tray_message_shown = True
+        else:
+            # No tray icon, allow normal close
+            event.accept()
     
     def get_encouraging_message(self, progress):
         """Generate encouraging messages based on progress - one per popup session"""
@@ -1827,7 +1977,8 @@ class ProgressPopup(QWidget):
             completed_goals=self.completed_goals,
             app_usage=self.app_usage,
             website_usage=self.website_usage,
-            session_data=session_data
+            session_data=session_data,
+            progress_popup=self  # Pass reference for tray icon cleanup
         )
         self.summary.show()
         self.summary.raise_()
@@ -1843,6 +1994,9 @@ class ProgressPopup(QWidget):
             self.popup_timer.stop()
         if hasattr(self, 'app_timer'):
             self.app_timer.stop()
+        
+        # Note: Tray icon cleanup moved to SessionSummary.close_with_cleanup()
+        # to avoid interfering with summary display
         
         # Delete current_mode file to indicate session is ended
         try:
@@ -1886,7 +2040,8 @@ class ProgressPopup(QWidget):
             completed_goals=self.completed_goals,
             app_usage=self.app_usage,
             website_usage=self.website_usage,
-            session_data=session_data
+            session_data=session_data,
+            progress_popup=self  # Pass reference for tray icon cleanup
         )
         self.summary.show()
         self.summary.raise_()
@@ -1901,7 +2056,7 @@ class ProgressPopup(QWidget):
 
 
 class SessionSummary(QWidget):
-    def __init__(self, session_duration, goals, completed_goals, app_usage, website_usage=None, session_data=None):
+    def __init__(self, session_duration, goals, completed_goals, app_usage, website_usage=None, session_data=None, progress_popup=None):
         super().__init__()
         self.session_duration = session_duration
         self.goals = goals
@@ -1909,6 +2064,7 @@ class SessionSummary(QWidget):
         self.app_usage = app_usage
         self.website_usage = website_usage or {}
         self.session_data = session_data or {}
+        self.progress_popup = progress_popup  # Keep reference to cleanup tray icon
         self.init_ui()
     
     def get_encouraging_title(self):
@@ -1933,6 +2089,7 @@ class SessionSummary(QWidget):
     
     def init_ui(self):
         self.setWindowTitle('Session Complete')
+        self.setWindowIcon(get_app_icon())
         # Use same window setup as CountdownWindow
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
         self.showMaximized()
@@ -2395,6 +2552,15 @@ class SessionSummary(QWidget):
             import traceback
             traceback.print_exc()
         
+        # Clean up tray icon before closing
+        if self.progress_popup and hasattr(self.progress_popup, 'tray_icon'):
+            try:
+                self.progress_popup.tray_icon.hide()
+                self.progress_popup.tray_icon = None
+                print("DEBUG: Tray icon cleaned up")
+            except Exception as e:
+                print(f"DEBUG: Error cleaning up tray icon: {e}")
+        
         self.close()
         
         # Kill background processes with password dialog if needed
@@ -2423,6 +2589,7 @@ class PasswordDialog(QDialog):
     
     def init_ui(self):
         self.setWindowTitle('Authentication Required')
+        self.setWindowIcon(get_app_icon())
         self.setFixedSize(400, 250)
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
         
@@ -2569,6 +2736,7 @@ class PasswordDialog(QDialog):
 class BreathingCircle(QWidget):
     def __init__(self):
         super().__init__()
+        self.setWindowIcon(get_app_icon())
         self.radius = 60
         self.min_radius = 60
         self.max_radius = 120
@@ -2662,6 +2830,7 @@ class CountdownWindow(QWidget):
             return []
     
     def init_ui(self):
+        self.setWindowIcon(get_app_icon())
         # Make fullscreen and remove window decorations
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
         self.showFullScreen()
@@ -2824,6 +2993,7 @@ class FocusSelector(QWidget):
     
     def init_ui(self):
         self.setWindowTitle('Focus Mode Selector')
+        self.setWindowIcon(get_app_icon())
         self.setFixedSize(600, 550)
         
         # Ensure window comes to front when opened
@@ -3056,8 +3226,10 @@ class FocusSelector(QWidget):
 
 class FocusLauncher:
     def __init__(self):
+        
+        QApplication.setApplicationName("Focus Utility")
         self.app = QApplication(sys.argv)
-        self.app.setWindowIcon(QIcon("icon.png"))
+        self.app.setWindowIcon(get_app_icon())
         
         # Prevent app from quitting when all windows are closed (important for background timers)
         self.app.setQuitOnLastWindowClosed(False)
