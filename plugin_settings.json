@@ -1,6 +1,6 @@
 {
   "enabled_plugins": [
-    "control_surface"
+    "led_progressbar"
   ],
   "app_settings": {
     "popup_interval_minutes": 1

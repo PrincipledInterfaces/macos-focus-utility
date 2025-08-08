@@ -1,0 +1,8 @@
+{
+  "name": "LED Progressbar",
+  "version": "1.0.0",
+  "description": "Enables support for the LED Progressbar",
+  "main_file": "plugin.py",
+  "author": "Matthew Reichard",
+  "permissions": ["notifications"]
+}
