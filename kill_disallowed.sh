@@ -28,7 +28,8 @@ if [ $? -ne 0 ] || [ -z "$running" ]; then
 fi
 
 # Process the comma-separated list more carefully
-IFS=', ' read -ra RUNNING_APPS <<< "$running"
+# Split only on commas, not spaces, since app names can contain spaces
+IFS=',' read -ra RUNNING_APPS <<< "$running"
 
 for app in "${RUNNING_APPS[@]}"; do
     # Remove any quotes or extra whitespace

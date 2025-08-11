@@ -1,8 +1,8 @@
 {
   "enabled_plugins": [
-    "led_progressbar"
+    "cs_screw"
   ],
   "app_settings": {
-    "popup_interval_minutes": 1
+    "popup_interval_minutes": 4
   }
 }

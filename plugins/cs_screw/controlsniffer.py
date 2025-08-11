@@ -80,7 +80,14 @@ def connect_to_esp():
         return None
         
     try:
+        # Close any existing connection first
+        import subprocess
+        subprocess.run(['fuser', '-k', port], capture_output=True)
+        
         ser = serial.Serial(port, 9600, timeout=1)
+        # Flush any existing data
+        ser.flushInput()
+        ser.flushOutput()
         print(f"✅ Connected to ESP8266 at {port}")
         return ser
     except Exception as e:
@@ -101,8 +108,28 @@ def handle_serial_communication(ser):
     """Handle serial communication with error handling"""
     try:
         if ser.in_waiting:
-            line = ser.readline().decode().strip()
-            return line
+            # Wait a tiny bit to ensure complete message
+            import time
+            time.sleep(0.01)
+            
+            # Read all available data
+            raw_bytes = ser.read(ser.in_waiting)
+            print(f"DEBUG: Raw bytes received: {raw_bytes}")
+            
+            # Decode and split by newlines
+            try:
+                text = raw_bytes.decode('utf-8', errors='ignore')
+                lines = [line.strip() for line in text.split('\n') if line.strip()]
+                print(f"DEBUG: Decoded lines: {lines}")
+                
+                # Return the first valid line
+                for line in lines:
+                    if line in ['button1', 'button2']:
+                        return line
+                        
+            except Exception as decode_error:
+                print(f"DEBUG: Decode error: {decode_error}")
+                
     except Exception as e:
         print(f"⚠️  Serial communication error: {e}")
         return None
@@ -251,7 +278,7 @@ while True:
             except:
                 pass
             ser = None
-        elif line:  # Received valid data
+        elif line and line.strip():  # Received valid non-empty data
             print(f"📡 Received: {line}")
             if line == "button1":
                 button_1_action()
