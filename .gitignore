@@ -14,4 +14,11 @@ __pycache__/
 # Temporary files
 *.tmp
 
+# Custom user-generated modes and hosts
+modes/custom/
+hosts/custom/
+
+# Build directory
+builds/
+
 CODE_EXPLANATION.md

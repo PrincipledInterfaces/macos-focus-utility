@@ -88,10 +88,10 @@ def connect_to_esp():
         # Flush any existing data
         ser.flushInput()
         ser.flushOutput()
-        print(f"Connected to ESP8266 at {port}")
+        print(f"✅ Connected to ESP8266 at {port}")
         return ser
     except Exception as e:
-        print(f"Failed to connect to {port}: {e}")
+        print(f"❌ Failed to connect to {port}: {e}")
         return None
 
 def is_esp_connected(ser):
@@ -131,7 +131,7 @@ def handle_serial_communication(ser):
                 print(f"DEBUG: Decode error: {decode_error}")
                 
     except Exception as e:
-        print(f"Serial communication error: {e}")
+        print(f"⚠️  Serial communication error: {e}")
         return None
     return ""
 
@@ -226,21 +226,16 @@ def button_1_action():
     if is_session_actually_running():
         print("DEBUG: Active session detected, ending current session")
         end_session_event()
-        set_queued_mode("productivity")
     else:
         print("DEBUG: No active session, starting productivity mode")
         start_mode("productivity")
 
 def button_2_action():
-    if is_session_actually_running():
-        print("DEBUG: Active session detected, ending current session")
-        end_session_only()  # End without queueing another mode
-    else:
-        print("DEBUG: No active session")
+    pass
 
 # Main loop with continuous scanning and reconnection
-print("Control Surface Monitor starting...")
-print("Scanning for ESP8266 device...")
+print("🔍 Control Surface Monitor starting...")
+print("📱 Scanning for ESP8266 device...")
 
 while True:
     current_time = time.time()
@@ -251,7 +246,7 @@ while True:
     # Handle ESP connection
     if not is_esp_connected(ser):
         if ser is not None:
-            print("ESP8266 disconnected")
+            print("🔌 ESP8266 disconnected")
             try:
                 ser.close()
             except:
@@ -260,26 +255,26 @@ while True:
         
         # Try to reconnect if enough time has passed
         if current_time - last_connection_attempt >= connection_retry_interval:
-            print("Scanning for ESP8266...")
+            print("🔍 Scanning for ESP8266...")
             ser = connect_to_esp()
             last_connection_attempt = current_time
             
             if ser is None:
-                print(f"ESP8266 not found, retrying in {connection_retry_interval}s...")
+                print(f"⏳ ESP8266 not found, retrying in {connection_retry_interval}s...")
     
     # Handle button signals if connected
     if is_esp_connected(ser):
         line = handle_serial_communication(ser)
         
         if line is None:  # Communication error occurred
-            print("Communication lost, will attempt reconnection...")
+            print("🔌 Communication lost, will attempt reconnection...")
             try:
                 ser.close()
             except:
                 pass
             ser = None
         elif line and line.strip():  # Received valid non-empty data
-            print(f"Received: {line}")
+            print(f"📡 Received: {line}")
             if line == "button1":
                 button_1_action()
             elif line == "button2":

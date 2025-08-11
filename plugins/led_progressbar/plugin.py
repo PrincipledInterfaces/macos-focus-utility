@@ -29,10 +29,10 @@ def connect_to_esp():
         
     try:
         ser = serial.Serial(port, 115200, timeout=1)
-        print(f"✅ Connected to ESP8266 at {port}")
+        print(f"Connected to ESP8266 at {port}")
         return ser
     except Exception as e:
-        print(f"❌ Failed to connect to {port}: {e}")
+        print(f"Failed to connect to {port}: {e}")
         return None
 
 def is_esp_connected(ser):

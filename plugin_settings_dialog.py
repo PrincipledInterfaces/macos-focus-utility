@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
 from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QLabel, 
-                             QPushButton, QCheckBox, QScrollArea, QWidget, QFrame, QSpinBox)
-from PyQt5.QtCore import Qt
+                             QPushButton, QCheckBox, QScrollArea, QWidget, QFrame, QSpinBox,
+                             QMessageBox, QProgressDialog, QApplication)
+from PyQt5.QtCore import Qt, QTimer
 from plugin_system import plugin_manager
+from ai_service import ai_service
 import json
 import os
 
@@ -142,6 +144,49 @@ class PluginSettingsDialog(QMainWindow):
         app_settings_layout.addWidget(self.popup_interval_spinbox)
         
         layout.addLayout(app_settings_layout)
+        
+        # AI Settings Section
+        ai_settings_layout = QVBoxLayout()
+        ai_settings_layout.setSpacing(10)
+        ai_settings_layout.setContentsMargins(0, 10, 0, 10)
+        
+        # Detect Programs button
+        detect_button = QPushButton("Detect Programs")
+        detect_button.setStyleSheet("""
+            QPushButton {
+                background-color: #007AFF;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 20px;
+                font-size: 14px;
+                font-weight: 500;
+                min-height: 20px;
+            }
+            QPushButton:hover {
+                background-color: #0056CC;
+            }
+            QPushButton:pressed {
+                background-color: #004499;
+            }
+            QPushButton:disabled {
+                background-color: #cccccc;
+                color: #666666;
+            }
+        """)
+        detect_button.clicked.connect(self.detect_programs)
+        
+        detect_label = QLabel("Use AI to analyze your installed apps and websites, automatically configuring focus modes for optimal productivity")
+        detect_label.setStyleSheet("""
+            font-size: 12px;
+            color: #666666;
+            margin-top: 5px;
+        """)
+        detect_label.setWordWrap(True)
+        
+        ai_settings_layout.addWidget(detect_button)
+        ai_settings_layout.addWidget(detect_label)
+        layout.addLayout(ai_settings_layout)
         
         # Plugins scroll area
         scroll = QScrollArea()
@@ -447,6 +492,164 @@ class PluginSettingsDialog(QMainWindow):
         
         # Bring window to front but don't keep it on top
         self.raise_()
+    
+    def detect_programs(self):
+        """Use AI to detect and categorize programs for focus modes"""
+        if not ai_service.is_available():
+            QMessageBox.warning(self, "AI Service Unavailable", 
+                              "AI service is not available. Please ensure your Groq API key is configured in groq_api_key.txt")
+            return
+        
+        # Show confirmation dialog
+        reply = QMessageBox.question(self, "Detect Programs", 
+                                   "This will analyze your installed applications and websites, then automatically update your focus mode configurations.\n\n"
+                                   "This may take a few minutes and will overwrite existing mode configurations.\n\n"
+                                   "Continue?",
+                                   QMessageBox.Yes | QMessageBox.No,
+                                   QMessageBox.No)
+        
+        if reply != QMessageBox.Yes:
+            return
+        
+        # Show progress dialog
+        progress = QProgressDialog("Analyzing programs and generating focus modes...", "Cancel", 0, 100, self)
+        progress.setWindowTitle("AI Program Detection")
+        progress.setMinimumDuration(0)
+        progress.setValue(10)
+        
+        QApplication.processEvents()
+        
+        try:
+            # Get installed applications
+            print("Getting installed applications...")
+            apps = ai_service.get_installed_applications()
+            progress.setValue(30)
+            QApplication.processEvents()
+            
+            if progress.wasCanceled():
+                return
+            
+            # Categorize apps
+            print("Categorizing applications with AI...")
+            app_categories = ai_service.categorize_apps_for_modes(apps)
+            progress.setValue(60)
+            QApplication.processEvents()
+            
+            if progress.wasCanceled():
+                return
+            
+            # Generate website blocks
+            print("Generating website blocks...")
+            site_categories = ai_service.generate_website_blocks_for_modes()
+            progress.setValue(80)
+            QApplication.processEvents()
+            
+            if progress.wasCanceled():
+                return
+            
+            # Update mode files
+            print("Updating focus mode configurations...")
+            self._update_mode_files(app_categories, site_categories)
+            progress.setValue(100)
+            QApplication.processEvents()
+            
+            progress.close()
+            
+            # Show completion message
+            total_apps = sum(len(apps) for apps in app_categories.values())
+            total_sites = sum(len(sites) for sites in site_categories.values())
+            
+            QMessageBox.information(self, "Detection Complete", 
+                                  f"Successfully analyzed and configured focus modes!\n\n"
+                                  f"{len(apps)} applications analyzed\n"
+                                  f"{total_apps} app assignments made\n"
+                                  f"{total_sites} website blocks configured\n\n"
+                                  f"Your focus modes have been optimized for your system.")
+                                  
+        except Exception as e:
+            progress.close()
+            print(f"Error during program detection: {e}")
+            QMessageBox.critical(self, "Detection Error", 
+                               f"An error occurred during program detection:\n\n{str(e)}")
+    
+    def _update_mode_files(self, app_categories: dict, site_categories: dict):
+        """Update the mode and host files with AI-generated content"""
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Update apps for each mode
+        for mode, apps in app_categories.items():
+            mode_file = os.path.join(script_dir, 'modes', f'{mode}.txt')
+            
+            # Backup existing file
+            if os.path.exists(mode_file):
+                backup_file = f'{mode_file}.backup'
+                try:
+                    import shutil
+                    shutil.copy2(mode_file, backup_file)
+                    print(f"Backed up existing {mode}.txt")
+                except:
+                    pass
+            
+            # Write new content
+            with open(mode_file, 'w') as f:
+                f.write('\n'.join(sorted(apps)))
+            print(f"Updated {mode}.txt with {len(apps)} apps")
+        
+        # Update hosts for each mode
+        for mode, sites in site_categories.items():
+            hosts_file = os.path.join(script_dir, 'hosts', f'{mode}_hosts')
+            
+            # Backup existing file
+            if os.path.exists(hosts_file):
+                backup_file = f'{hosts_file}.backup'
+                try:
+                    import shutil
+                    shutil.copy2(hosts_file, backup_file)
+                    print(f"Backed up existing {mode}_hosts")
+                except:
+                    pass
+            
+            # Write new content with comprehensive blocking
+            with open(hosts_file, 'w') as f:
+                for site in sorted(sites):
+                    # Remove any protocol or path if included
+                    clean_site = site.replace('https://', '').replace('http://', '').split('/')[0]
+                    
+                    # Block the main domain and common subdomains
+                    f.write(f'127.0.0.1 {clean_site}\n')
+                    f.write(f'127.0.0.1 www.{clean_site}\n')
+                    f.write(f'127.0.0.1 m.{clean_site}\n')
+                    f.write(f'127.0.0.1 mobile.{clean_site}\n')
+                    f.write(f'127.0.0.1 touch.{clean_site}\n')
+                    f.write(f'127.0.0.1 app.{clean_site}\n')
+                    f.write(f'127.0.0.1 apps.{clean_site}\n')
+                    f.write(f'127.0.0.1 api.{clean_site}\n')
+                    f.write(f'127.0.0.1 cdn.{clean_site}\n')
+                    f.write(f'127.0.0.1 static.{clean_site}\n')
+                    f.write(f'127.0.0.1 assets.{clean_site}\n')
+                    
+                    # For social media sites, add specific common subdomains
+                    if any(social in clean_site for social in ['facebook', 'instagram', 'twitter', 'tiktok']):
+                        f.write(f'127.0.0.1 graph.{clean_site}\n')
+                        f.write(f'127.0.0.1 connect.{clean_site}\n')
+                        f.write(f'127.0.0.1 login.{clean_site}\n')
+                        f.write(f'127.0.0.1 auth.{clean_site}\n')
+                    
+                    # For YouTube, block additional Google domains
+                    if 'youtube' in clean_site:
+                        f.write('127.0.0.1 youtubei.googleapis.com\n')
+                        f.write('127.0.0.1 youtube-ui.l.google.com\n')
+                        f.write('127.0.0.1 youtu.be\n')
+                        f.write('127.0.0.1 www.youtu.be\n')
+            
+            # Count total entries for more accurate reporting
+            total_entries = len(sites) * 11  # Base entries per site
+            social_sites = sum(1 for site in sites if any(social in site for social in ['facebook', 'instagram', 'twitter', 'tiktok']))
+            youtube_sites = sum(1 for site in sites if 'youtube' in site)
+            total_entries += social_sites * 4  # Additional social media entries
+            total_entries += youtube_sites * 4  # Additional YouTube entries
+            
+            print(f"Updated {mode}_hosts with {len(sites)} base sites ({total_entries} total blocked URLs)")
         self.activateWindow()
         
         # Ensure it's properly focused

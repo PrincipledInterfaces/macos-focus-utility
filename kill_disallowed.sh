@@ -8,13 +8,18 @@ fi
 
 mode=$(cat current_mode) #reads current_mode to get mode name
 
-# Check if mode file exists
-if [ ! -f "modes/$mode.txt" ]; then
-    echo "Mode file modes/$mode.txt not found. Exiting."
+# Check if mode file exists (check both standard and custom locations)
+mode_file=""
+if [ -f "modes/$mode.txt" ]; then
+    mode_file="modes/$mode.txt"
+elif [ -f "modes/custom/$mode.txt" ]; then
+    mode_file="modes/custom/$mode.txt"
+else
+    echo "Mode file for '$mode' not found in modes/ or modes/custom/. Exiting."
     exit 1
 fi
 
-allowed=$(cat "modes/$mode.txt") #checks for allowed app list in the mode text file
+allowed=$(cat "$mode_file") #checks for allowed app list in the mode text file
 
 # Essential apps that should never be killed (safety list)
 essential_apps=("Finder" "SystemUIServer" "Dock" "loginwindow" "WindowServer" "Terminal" "osascript" "System Events" "Python" "focus_launcher")

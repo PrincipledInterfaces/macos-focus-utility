@@ -2989,6 +2989,7 @@ class FocusSelector(QWidget):
         super().__init__()
         self.selected_mode = None
         self.modes = ['productivity', 'creativity', 'social']
+        self.custom_modes = self._discover_custom_modes()
         self.init_ui()
     
     def init_ui(self):
@@ -3101,6 +3102,17 @@ class FocusSelector(QWidget):
         self.mode_combo.addItem("Productivity - Work and focus apps only")
         self.mode_combo.addItem("Creativity - Design and creative tools")
         self.mode_combo.addItem("Social - Communication and collaboration")
+        
+        # Add custom modes if any exist
+        if self.custom_modes:
+            self.mode_combo.addItem("--- Custom Modes ---")
+            for custom_mode in self.custom_modes:
+                display_name = custom_mode.replace('_', ' ').title()
+                self.mode_combo.addItem(f"{display_name} - Custom mode")
+        
+        # Add option to create new custom mode
+        self.mode_combo.addItem("--- Create New ---")
+        self.mode_combo.addItem("Create Custom Mode...")
         
         self.mode_combo.setStyleSheet("""
             QComboBox {
@@ -3215,10 +3227,99 @@ class FocusSelector(QWidget):
             print(f"Error showing plugin settings: {e}")
     
     def start_focus(self):
-        if self.mode_combo.currentIndex() > 0:  # Not "Select a mode..."
-            self.selected_mode = self.modes[self.mode_combo.currentIndex() - 1]
+        index = self.mode_combo.currentIndex()
+        if index <= 0:  # "Select a mode..."
+            return
+            
+        selected_text = self.mode_combo.currentText()
+        
+        # Handle custom mode creation
+        if selected_text == "Create Custom Mode...":
+            self.create_custom_mode()
+            return
+        
+        # Skip separator items
+        if selected_text.startswith("---"):
+            return
+        
+        # Handle built-in modes
+        if index <= len(self.modes):
+            self.selected_mode = self.modes[index - 1]
+        else:
+            # Handle custom modes
+            custom_mode_index = index - len(self.modes) - 1  # Account for separator
+            if selected_text.startswith("--- Custom Modes ---"):
+                custom_mode_index -= 1  # Account for custom modes separator
+            if selected_text.startswith("--- Create New ---"):
+                custom_mode_index -= 1  # Account for create new separator
+            
+            # Extract custom mode name from display text
+            for custom_mode in self.custom_modes:
+                display_name = custom_mode.replace('_', ' ').title()
+                if display_name in selected_text:
+                    self.selected_mode = f"custom/{custom_mode}"
+                    break
+        
+        if hasattr(self, 'selected_mode') and self.selected_mode:
             self.use_website_blocking = self.blocking_combo.currentIndex() == 1  # True if "Apps + Websites"
             self.close()
+    
+    def _discover_custom_modes(self):
+        """Discover available custom modes"""
+        try:
+            import os
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            custom_dir = os.path.join(script_dir, 'modes', 'custom')
+            
+            if not os.path.exists(custom_dir):
+                return []
+            
+            custom_modes = []
+            for filename in os.listdir(custom_dir):
+                if filename.endswith('.txt'):
+                    mode_name = filename.replace('.txt', '')
+                    custom_modes.append(mode_name)
+            
+            return sorted(custom_modes)
+        except Exception as e:
+            print(f"Error discovering custom modes: {e}")
+            return []
+    
+    def create_custom_mode(self):
+        """Show the custom mode creation dialog"""
+        try:
+            from custom_mode_dialog import CustomModeDialog
+            dialog = CustomModeDialog(self)
+            if dialog.exec_() == QDialog.Accepted:
+                # Refresh the custom modes and combo box
+                self.custom_modes = self._discover_custom_modes()
+                self._refresh_combo_box()
+        except Exception as e:
+            print(f"Error creating custom mode: {e}")
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.critical(self, "Error", f"Failed to open custom mode dialog:\n{str(e)}")
+    
+    def _refresh_combo_box(self):
+        """Refresh the combo box to include new custom modes"""
+        current_index = self.mode_combo.currentIndex()
+        self.mode_combo.clear()
+        
+        # Re-populate combo box
+        self.mode_combo.addItem("Select a mode...")
+        self.mode_combo.addItem("Productivity - Work and focus apps only")
+        self.mode_combo.addItem("Creativity - Design and creative tools")
+        self.mode_combo.addItem("Social - Communication and collaboration")
+        
+        # Add custom modes if any exist
+        if self.custom_modes:
+            self.mode_combo.addItem("--- Custom Modes ---")
+            for custom_mode in self.custom_modes:
+                display_name = custom_mode.replace('_', ' ').title()
+                self.mode_combo.addItem(f"{display_name} - Custom mode")
+        
+        # Add option to create new custom mode
+        self.mode_combo.addItem("--- Create New ---")
+        self.mode_combo.addItem("Create Custom Mode...")
     
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
@@ -3395,6 +3496,19 @@ class FocusLauncher:
             script_dir = os.path.dirname(os.path.abspath(__file__))
             os.chdir(script_dir)
             
+            # Handle custom modes
+            actual_mode = mode
+            if mode.startswith('custom/'):
+                actual_mode = mode.replace('custom/', '')
+                # Verify custom mode files exist
+                custom_mode_file = os.path.join('modes', 'custom', f'{actual_mode}.txt')
+                custom_hosts_file = os.path.join('hosts', 'custom', f'{actual_mode}_hosts')
+                
+                if not os.path.exists(custom_mode_file):
+                    raise Exception(f"Custom mode file not found: {custom_mode_file}")
+                if use_website_blocking and not os.path.exists(custom_hosts_file):
+                    raise Exception(f"Custom hosts file not found: {custom_hosts_file}")
+            
             # Start monitoring in background
             subprocess.Popen(['./monitor_active_programs.sh'], 
                            stdout=subprocess.DEVNULL, 
@@ -3410,7 +3524,8 @@ class FocusLauncher:
                     # Create modified script that uses the provided password
                     try:
                         self.run_with_password(mode, password)
-                        print(f"{mode.title()} focus mode activated with website blocking!")
+                        display_name = actual_mode.replace('_', ' ').title() if mode.startswith('custom/') else mode.title()
+                        print(f"{display_name} focus mode activated with website blocking!")
                     except Exception as e:
                         print(f"Failed to activate focus mode: {e}")
                         return
@@ -3418,8 +3533,9 @@ class FocusLauncher:
                     print("Password required for website blocking. Exiting.")
                     return
             else:
-                subprocess.run(['bash', './set_mode_nosudo.sh', mode], check=True)
-                print(f"{mode.title()} focus mode activated (apps only, no website blocking)!")
+                subprocess.run(['bash', './set_mode_nosudo.sh', actual_mode], check=True)
+                display_name = actual_mode.replace('_', ' ').title() if mode.startswith('custom/') else mode.title()
+                print(f"{display_name} focus mode activated (apps only, no website blocking)!")
                 
         except subprocess.CalledProcessError as e:
             print(f"Error launching focus mode: {e}")
@@ -3431,16 +3547,23 @@ class FocusLauncher:
     def run_with_password(self, mode, password):
         """Run the focus mode setup with the provided password"""
         try:
-            # Write mode to file
-            print(f"DEBUG: Creating current_mode file for {mode} mode")
+            # Handle custom modes
+            actual_mode = mode
+            hosts_file = f"hosts/{mode}_hosts"
+            if mode.startswith('custom/'):
+                actual_mode = mode.replace('custom/', '')
+                hosts_file = f"hosts/custom/{actual_mode}_hosts"
+            
+            # Write mode to file (use actual_mode for consistency)
+            print(f"DEBUG: Creating current_mode file for {actual_mode} mode")
             with open('current_mode', 'w') as f:
-                f.write(mode)
+                f.write(actual_mode)
             
             # Escape password for shell safety
             escaped_password = password.replace('"', '\\"').replace('$', '\\$').replace('`', '\\`')
             
             # Copy hosts file with password
-            cmd1 = f'echo "{escaped_password}" | sudo -S cp "hosts/{mode}_hosts" /etc/hosts 2>/dev/null'
+            cmd1 = f'echo "{escaped_password}" | sudo -S cp "{hosts_file}" /etc/hosts 2>/dev/null'
             result1 = subprocess.run(cmd1, shell=True, capture_output=True, text=True)
             if result1.returncode != 0:
                 raise Exception("Incorrect password or permission denied")

@@ -1,6 +1,6 @@
 {
   "enabled_plugins": [
-    "cs_screw"
+    "cs_marble"
   ],
   "app_settings": {
     "popup_interval_minutes": 4

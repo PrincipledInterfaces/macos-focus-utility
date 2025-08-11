@@ -1,0 +1,46 @@
+127.0.0.1 localhost
+::1 localhost
+
+# Twitter/X comprehensive blocking
+127.0.0.1 twitter.com
+127.0.0.1 www.twitter.com
+127.0.0.1 mobile.twitter.com
+127.0.0.1 m.twitter.com
+127.0.0.1 x.com
+127.0.0.1 www.x.com
+127.0.0.1 mobile.x.com
+127.0.0.1 m.x.com
+127.0.0.1 t.co
+
+# TikTok comprehensive blocking
+127.0.0.1 tiktok.com
+127.0.0.1 www.tiktok.com
+127.0.0.1 m.tiktok.com
+127.0.0.1 mobile.tiktok.com
+127.0.0.1 vm.tiktok.com
+
+# Facebook comprehensive blocking
+127.0.0.1 facebook.com
+127.0.0.1 www.facebook.com
+127.0.0.1 m.facebook.com
+127.0.0.1 mobile.facebook.com
+127.0.0.1 fb.com
+127.0.0.1 www.fb.com
+127.0.0.1 fb.me
+
+# Instagram comprehensive blocking
+127.0.0.1 instagram.com
+127.0.0.1 www.instagram.com
+127.0.0.1 m.instagram.com
+127.0.0.1 mobile.instagram.com
+
+# Email blocking for creativity mode
+127.0.0.1 gmail.com
+127.0.0.1 www.gmail.com
+127.0.0.1 mail.google.com
+127.0.0.1 outlook.com
+127.0.0.1 www.outlook.com
+127.0.0.1 outlook.live.com
+127.0.0.1 yahoo.com
+127.0.0.1 www.yahoo.com
+127.0.0.1 mail.yahoo.com

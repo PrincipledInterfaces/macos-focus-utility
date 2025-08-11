@@ -1,81 +1,36 @@
-127.0.0.1 localhost
-::1 localhost
-
-# Social Media Detox mode - blocks all social media and entertainment sites
-# Allows only essential work and productivity sites
-
-# Social Media Platforms
-127.0.0.1 facebook.com
-127.0.0.1 www.facebook.com
-127.0.0.1 m.facebook.com
-127.0.0.1 instagram.com
-127.0.0.1 www.instagram.com
-127.0.0.1 twitter.com
-127.0.0.1 www.twitter.com
-127.0.0.1 x.com
-127.0.0.1 www.x.com
-127.0.0.1 linkedin.com
-127.0.0.1 www.linkedin.com
-127.0.0.1 tiktok.com
-127.0.0.1 www.tiktok.com
-127.0.0.1 snapchat.com
-127.0.0.1 www.snapchat.com
-127.0.0.1 pinterest.com
-127.0.0.1 www.pinterest.com
-127.0.0.1 reddit.com
-127.0.0.1 www.reddit.com
-127.0.0.1 9gag.com
-127.0.0.1 www.9gag.com
-127.0.0.1 tumblr.com
-127.0.0.1 www.tumblr.com
-
-# Video Streaming Platforms
-127.0.0.1 youtube.com
-127.0.0.1 www.youtube.com
-127.0.0.1 youtu.be
-127.0.0.1 netflix.com
-127.0.0.1 www.netflix.com
-127.0.0.1 hulu.com
-127.0.0.1 www.hulu.com
-127.0.0.1 disneyplus.com
-127.0.0.1 www.disneyplus.com
-127.0.0.1 primevideo.com
-127.0.0.1 www.primevideo.com
-127.0.0.1 twitch.tv
-127.0.0.1 www.twitch.tv
-127.0.0.1 vimeo.com
-127.0.0.1 www.vimeo.com
-
-# Music Streaming
-127.0.0.1 spotify.com
-127.0.0.1 www.spotify.com
-127.0.0.1 soundcloud.com
-127.0.0.1 www.soundcloud.com
-127.0.0.1 music.apple.com
-127.0.0.1 pandora.com
-127.0.0.1 www.pandora.com
-
-# Gaming Platforms
-127.0.0.1 steam.com
-127.0.0.1 store.steampowered.com
-127.0.0.1 epicgames.com
-127.0.0.1 www.epicgames.com
-127.0.0.1 battle.net
-127.0.0.1 us.battle.net
-127.0.0.1 origin.com
-127.0.0.1 www.origin.com
-
-# News and Entertainment
-127.0.0.1 buzzfeed.com
-127.0.0.1 www.buzzfeed.com
-127.0.0.1 vice.com
-127.0.0.1 www.vice.com
-127.0.0.1 mashable.com
-127.0.0.1 www.mashable.com
-
-# Chat and Communication (non-work)
+127.0.0.1 amazon.com
+127.0.0.1 www.amazon.com
 127.0.0.1 discord.com
 127.0.0.1 www.discord.com
-127.0.0.1 web.whatsapp.com
-127.0.0.1 telegram.org
-127.0.0.1 web.telegram.org
+127.0.0.1 discordapp.com
+127.0.0.1 www.discordapp.com
+127.0.0.1 ebay.com
+127.0.0.1 www.ebay.com
+127.0.0.1 etsy.com
+127.0.0.1 www.etsy.com
+127.0.0.1 facebook.com
+127.0.0.1 www.facebook.com
+127.0.0.1 github.com
+127.0.0.1 www.github.com
+127.0.0.1 gitlab.com
+127.0.0.1 www.gitlab.com
+127.0.0.1 instagram.com
+127.0.0.1 www.instagram.com
+127.0.0.1 netflix.com
+127.0.0.1 www.netflix.com
+127.0.0.1 reddit.com
+127.0.0.1 www.reddit.com
+127.0.0.1 slack.com
+127.0.0.1 www.slack.com
+127.0.0.1 steam.com
+127.0.0.1 www.steam.com
+127.0.0.1 tiktok.com
+127.0.0.1 www.tiktok.com
+127.0.0.1 tiktok.com
+127.0.0.1 www.tiktok.com
+127.0.0.1 twitch.tv
+127.0.0.1 www.twitch.tv
+127.0.0.1 twitter.com
+127.0.0.1 www.twitter.com
+127.0.0.1 youtube.com
+127.0.0.1 www.youtube.com
