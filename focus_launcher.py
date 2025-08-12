@@ -4,6 +4,8 @@ import sys
 import os
 import subprocess
 import time
+import signal
+import atexit
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QComboBox, QPushButton, QFrame, QLineEdit, QDialog, QGraphicsDropShadowEffect,
                              QSpinBox, QTextEdit, QCheckBox, QScrollArea, QProgressBar, QGraphicsBlurEffect,
@@ -66,6 +68,20 @@ def get_popup_interval_setting():
         return 1
     except Exception:
         return 1
+
+def get_breath_duration_setting():
+    """Get breath screen duration setting from config, default to 15 seconds"""
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        settings_file = os.path.join(script_dir, 'plugin_settings.json')
+        
+        if os.path.exists(settings_file):
+            with open(settings_file, 'r') as f:
+                settings = json.load(f)
+            return settings.get('app_settings', {}).get('breath_duration_seconds', 15)
+        return 15
+    except Exception:
+        return 15
 
 def stop_focus_mode_with_password():
     """Stop focus mode, asking for password if needed"""
@@ -2812,7 +2828,7 @@ class CountdownWindow(QWidget):
     def __init__(self, mode):
         super().__init__()
         self.mode = mode
-        self.countdown = 15
+        self.countdown = get_breath_duration_setting()
         self.allowed_apps = self.get_allowed_apps(mode)
         self.countdown_finished = False
         self.init_ui()
@@ -3334,6 +3350,32 @@ class FocusLauncher:
         
         # Prevent app from quitting when all windows are closed (important for background timers)
         self.app.setQuitOnLastWindowClosed(False)
+        
+        # Set up graceful cleanup handlers
+        def cleanup_handler():
+            """Cleanup function called on exit"""
+            print("Performing emergency cleanup...")
+            try:
+                from plugin_system import plugin_manager
+                plugin_manager.cleanup_all_plugins()
+            except Exception as e:
+                print(f"Plugin cleanup error: {e}")
+            
+            try:
+                stop_focus_mode_with_password()
+            except Exception as e:
+                print(f"Focus mode cleanup error: {e}")
+        
+        def signal_handler(signum, frame):
+            """Handle termination signals"""
+            print(f"Received signal {signum}, cleaning up...")
+            cleanup_handler()
+            sys.exit(1)
+        
+        # Register cleanup handlers
+        atexit.register(cleanup_handler)
+        signal.signal(signal.SIGINT, signal_handler)   # Ctrl+C
+        signal.signal(signal.SIGTERM, signal_handler)  # Kill signal
         
         # Initialize plugin system
         try:

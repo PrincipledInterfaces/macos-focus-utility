@@ -63,11 +63,12 @@ class PluginSettingsDialog(QMainWindow):
         layout.addWidget(subtitle)
         
         # App Settings Section (compact, no frame)
-        app_settings_layout = QHBoxLayout()
-        app_settings_layout.setSpacing(15)
+        app_settings_layout = QVBoxLayout()
+        app_settings_layout.setSpacing(10)
         app_settings_layout.setContentsMargins(0, 0, 0, 0)
         
         # Popup interval setting
+        popup_row = QHBoxLayout()
         interval_label = QLabel("How often should we check in?:")
         interval_label.setStyleSheet("""
             font-size: 14px;
@@ -79,7 +80,8 @@ class PluginSettingsDialog(QMainWindow):
         self.popup_interval_spinbox.setMaximum(60)
         self.popup_interval_spinbox.setSuffix(" minutes")
         self.popup_interval_spinbox.setValue(self.get_popup_interval_setting())
-        self.popup_interval_spinbox.setStyleSheet("""
+        
+        spinbox_style = """
             QSpinBox {
                 padding: 6px 8px;
                 font-size: 14px;
@@ -137,11 +139,35 @@ class PluginSettingsDialog(QMainWindow):
                 border-top: 6px solid #666;
                 margin-top: 2px;
             }
+        """
+        
+        self.popup_interval_spinbox.setStyleSheet(spinbox_style)
+        
+        popup_row.addWidget(interval_label)
+        popup_row.addStretch()
+        popup_row.addWidget(self.popup_interval_spinbox)
+        
+        # Breath duration setting
+        breath_row = QHBoxLayout()
+        breath_label = QLabel("Breath screen duration:")
+        breath_label.setStyleSheet("""
+            font-size: 14px;
+            color: #1d1d1f;
         """)
         
-        app_settings_layout.addWidget(interval_label)
-        app_settings_layout.addStretch()
-        app_settings_layout.addWidget(self.popup_interval_spinbox)
+        self.breath_duration_spinbox = QSpinBox()
+        self.breath_duration_spinbox.setMinimum(5)
+        self.breath_duration_spinbox.setMaximum(60)
+        self.breath_duration_spinbox.setSuffix(" seconds")
+        self.breath_duration_spinbox.setValue(self.get_breath_duration_setting())
+        self.breath_duration_spinbox.setStyleSheet(spinbox_style)
+        
+        breath_row.addWidget(breath_label)
+        breath_row.addStretch()
+        breath_row.addWidget(self.breath_duration_spinbox)
+        
+        app_settings_layout.addLayout(popup_row)
+        app_settings_layout.addLayout(breath_row)
         
         layout.addLayout(app_settings_layout)
         
@@ -447,6 +473,7 @@ class PluginSettingsDialog(QMainWindow):
         
         # Save app settings
         self.save_popup_interval_setting(self.popup_interval_spinbox.value())
+        self.save_breath_duration_setting(self.breath_duration_spinbox.value())
     
     def get_popup_interval_setting(self):
         """Get the popup interval setting from JSON file"""
@@ -461,6 +488,20 @@ class PluginSettingsDialog(QMainWindow):
             return 1
         except Exception:
             return 1
+    
+    def get_breath_duration_setting(self):
+        """Get breath screen duration setting from config, default to 15 seconds"""
+        try:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            settings_file = os.path.join(script_dir, 'plugin_settings.json')
+            
+            if os.path.exists(settings_file):
+                with open(settings_file, 'r') as f:
+                    settings = json.load(f)
+                return settings.get('app_settings', {}).get('breath_duration_seconds', 15)
+            return 15
+        except Exception:
+            return 15
     
     def save_popup_interval_setting(self, interval_minutes):
         """Save the popup interval setting to JSON file"""
@@ -485,6 +526,30 @@ class PluginSettingsDialog(QMainWindow):
                 
         except Exception as e:
             print(f"Error saving popup interval setting: {e}")
+    
+    def save_breath_duration_setting(self, duration_seconds):
+        """Save the breath duration setting to JSON file"""
+        try:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            settings_file = os.path.join(script_dir, 'plugin_settings.json')
+            
+            # Load existing settings
+            settings = {}
+            if os.path.exists(settings_file):
+                with open(settings_file, 'r') as f:
+                    settings = json.load(f)
+            
+            # Update app settings
+            if 'app_settings' not in settings:
+                settings['app_settings'] = {}
+            settings['app_settings']['breath_duration_seconds'] = duration_seconds
+            
+            # Save back to file
+            with open(settings_file, 'w') as f:
+                json.dump(settings, f, indent=2)
+                
+        except Exception as e:
+            print(f"Error saving breath duration setting: {e}")
     
     def showEvent(self, event):
         """Override showEvent to bring window to front when first shown"""

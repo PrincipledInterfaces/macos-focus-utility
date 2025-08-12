@@ -9,8 +9,10 @@ Usage: python focusmode.py [mode] [duration] [--goals "goal1;goal2"]
 import sys
 import argparse
 import os
+import signal
+import atexit
 from PyQt5.QtWidgets import QApplication, QDialog
-from focus_launcher import TimePickerDialog, GoalsDialog, GoalsReviewDialog, CountdownWindow, FocusLauncher, PluginTaskDialog, FinalGoalsDialog, get_app_icon
+from focus_launcher import TimePickerDialog, GoalsDialog, GoalsReviewDialog, CountdownWindow, FocusLauncher, PluginTaskDialog, FinalGoalsDialog, get_app_icon, stop_focus_mode_with_password
 
 
 def main():
@@ -92,6 +94,32 @@ Examples:
     
     # Prevent app from quitting when all windows are closed (important for background timers)
     app.setQuitOnLastWindowClosed(False)
+    
+    # Set up graceful cleanup handlers
+    def cleanup_handler():
+        """Cleanup function called on exit"""
+        print("Performing emergency cleanup...")
+        try:
+            from plugin_system import plugin_manager
+            plugin_manager.cleanup_all_plugins()
+        except Exception as e:
+            print(f"Plugin cleanup error: {e}")
+        
+        try:
+            stop_focus_mode_with_password()
+        except Exception as e:
+            print(f"Focus mode cleanup error: {e}")
+    
+    def signal_handler(signum, frame):
+        """Handle termination signals"""
+        print(f"Received signal {signum}, cleaning up...")
+        cleanup_handler()
+        sys.exit(1)
+    
+    # Register cleanup handlers
+    atexit.register(cleanup_handler)
+    signal.signal(signal.SIGINT, signal_handler)   # Ctrl+C
+    signal.signal(signal.SIGTERM, signal_handler)  # Kill signal
     
     try:
         # Initialize plugin system
