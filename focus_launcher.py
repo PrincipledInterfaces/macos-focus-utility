@@ -100,13 +100,21 @@ def stop_focus_mode_with_password():
             pass
         
         if needs_sudo:
-            # Ask for password for website blocking cleanup
-            from PyQt5.QtWidgets import QDialog
-            password_dialog = PasswordDialog()
-            password_dialog.setWindowTitle('Cleanup Required')
-            # Update the message to explain why password is needed
-            if password_dialog.exec_() == QDialog.Accepted:
-                password = password_dialog.password
+            # Get password for website blocking cleanup (using stored password if available)
+            try:
+                from password_manager import get_sudo_password
+                password = get_sudo_password()
+            except ImportError:
+                # Fallback to original method if password manager not available
+                from PyQt5.QtWidgets import QDialog
+                password_dialog = PasswordDialog()
+                password_dialog.setWindowTitle('Cleanup Required')
+                if password_dialog.exec_() == QDialog.Accepted:
+                    password = password_dialog.password
+                else:
+                    password = None
+            
+            if password:
                 
                 # Run cleanup commands with password
                 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -3172,27 +3180,28 @@ class FocusSelector(QWidget):
         
         main_layout.addLayout(mode_layout)
         
-        # Blocking options
-        blocking_layout = QVBoxLayout()
-        blocking_layout.setSpacing(16)
+        # Info about full blocking being always enabled
+        info_layout = QVBoxLayout()
+        info_layout.setSpacing(8)
         
-        blocking_label = QLabel("Website Blocking")
-        blocking_label.setStyleSheet("""
+        info_label = QLabel("Full Protection Mode")
+        info_label.setStyleSheet("""
             font-size: 16px;
             font-weight: 500;
             color: #1d1d1f;
+            margin-bottom: 4px;
+        """)
+        info_layout.addWidget(info_label)
+        
+        info_desc = QLabel("Apps + Websites blocking enabled")
+        info_desc.setStyleSheet("""
+            font-size: 14px;
+            color: #86868b;
             margin-bottom: 8px;
         """)
-        blocking_layout.addWidget(blocking_label)
+        info_layout.addWidget(info_desc)
         
-        self.blocking_combo = QComboBox()
-        self.blocking_combo.addItem("Apps Only - No password required")
-        self.blocking_combo.addItem("Apps + Websites - Password required")
-        
-        self.blocking_combo.setStyleSheet(self.mode_combo.styleSheet())
-        blocking_layout.addWidget(self.blocking_combo)
-        
-        main_layout.addLayout(blocking_layout)
+        main_layout.addLayout(info_layout)
         
         # Start button
         start_button = QPushButton("Begin Focus Session")
@@ -3277,7 +3286,7 @@ class FocusSelector(QWidget):
                     break
         
         if hasattr(self, 'selected_mode') and self.selected_mode:
-            self.use_website_blocking = self.blocking_combo.currentIndex() == 1  # True if "Apps + Websites"
+            self.use_website_blocking = True  # Always use full blocking
             self.close()
     
     def _discover_custom_modes(self):
@@ -3509,7 +3518,7 @@ class FocusLauncher:
                 break
         
         # Launch focus mode
-        self.launch_focus_mode(selector.selected_mode, selector.use_website_blocking)
+        self.launch_focus_mode(selector.selected_mode)
         
         # Start progress tracking with final goals
         popup_interval = get_popup_interval_setting()
@@ -3531,7 +3540,7 @@ class FocusLauncher:
         if countdown.countdown_finished or not countdown.isVisible():
             timer.stop()
     
-    def launch_focus_mode(self, mode, use_website_blocking=False):
+    def launch_focus_mode(self, mode):
         """Launch the actual focus mode scripts"""
         try:
             # Change to the script directory
@@ -3548,7 +3557,7 @@ class FocusLauncher:
                 
                 if not os.path.exists(custom_mode_file):
                     raise Exception(f"Custom mode file not found: {custom_mode_file}")
-                if use_website_blocking and not os.path.exists(custom_hosts_file):
+                if not os.path.exists(custom_hosts_file):
                     raise Exception(f"Custom hosts file not found: {custom_hosts_file}")
             
             # Start monitoring in background
@@ -3556,28 +3565,32 @@ class FocusLauncher:
                            stdout=subprocess.DEVNULL, 
                            stderr=subprocess.DEVNULL)
             
-            # Choose script based on blocking preference
-            if use_website_blocking:
-                # Show password dialog
+            # Always use full blocking with website blocking
+            # Get password (using stored password if available)
+            try:
+                from password_manager import get_sudo_password
+                password = get_sudo_password()
+            except ImportError:
+                # Fallback to original method if password manager not available
                 from PyQt5.QtWidgets import QDialog
                 password_dialog = PasswordDialog()
                 if password_dialog.exec_() == QDialog.Accepted:
                     password = password_dialog.password
-                    # Create modified script that uses the provided password
-                    try:
-                        self.run_with_password(mode, password)
-                        display_name = actual_mode.replace('_', ' ').title() if mode.startswith('custom/') else mode.title()
-                        print(f"{display_name} focus mode activated with website blocking!")
-                    except Exception as e:
-                        print(f"Failed to activate focus mode: {e}")
-                        return
                 else:
-                    print("Password required for website blocking. Exiting.")
+                    password = None
+            
+            if password:
+                # Create modified script that uses the provided password
+                try:
+                    self.run_with_password(mode, password)
+                    display_name = actual_mode.replace('_', ' ').title() if mode.startswith('custom/') else mode.title()
+                    print(f"{display_name} focus mode activated with full blocking!")
+                except Exception as e:
+                    print(f"Failed to activate focus mode: {e}")
                     return
             else:
-                subprocess.run(['bash', './set_mode_nosudo.sh', actual_mode], check=True)
-                display_name = actual_mode.replace('_', ' ').title() if mode.startswith('custom/') else mode.title()
-                print(f"{display_name} focus mode activated (apps only, no website blocking)!")
+                print("Password required for focus mode. Exiting.")
+                return
                 
         except subprocess.CalledProcessError as e:
             print(f"Error launching focus mode: {e}")

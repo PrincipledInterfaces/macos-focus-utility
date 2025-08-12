@@ -1,6 +1,9 @@
 # API Keys - never commit these!
 groq_api_key.txt
 
+# Encrypted password storage - never commit this!
+.focus_auth.enc
+
 # Logs
 *.log
 active_programs.log

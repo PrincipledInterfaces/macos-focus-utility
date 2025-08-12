@@ -8,7 +8,6 @@ echo "Stopping Focus Mode..."
 # Kill ALL focus mode related processes - be very thorough
 echo "Stopping all focus mode processes..."
 pkill -f "kill_looper.sh" 2>/dev/null
-pkill -f "kill_looper_nosudo.sh" 2>/dev/null
 pkill -f "kill_disallowed.sh" 2>/dev/null
 pkill -f "monitor_active_programs.sh" 2>/dev/null
 pkill -f "focus_launcher.py" 2>/dev/null

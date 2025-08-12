@@ -34,6 +34,8 @@ Examples:
   python focusmode.py deep 120 --no-countdown     # Skip countdown screen
   python focusmode.py --list                      # List available focus modes  
   python focusmode.py --status social             # Show mode details
+  
+  Note: All sessions use full blocking (apps + websites) with sudo authentication.
         '''
     )
     
@@ -45,8 +47,6 @@ Examples:
                        help='Semicolon-separated list of goals for the session')
     parser.add_argument('--no-countdown', action='store_true',
                        help='Skip the countdown screen')
-    parser.add_argument('--no-website-blocking', action='store_true',
-                       help='Disable website blocking for this session')
     parser.add_argument('--no-gui', action='store_true',
                        help='Skip all GUI dialogs and use only command line arguments')
     parser.add_argument('--list', action='store_true',
@@ -271,10 +271,9 @@ def run_cli_session(app, args):
             if not countdown.isVisible():
                 break
     
-    # Launch focus mode
+    # Launch focus mode with full blocking always enabled
     launcher = FocusLauncher()
-    use_website_blocking = not args.no_website_blocking
-    launcher.launch_focus_mode(args.mode, use_website_blocking)
+    launcher.launch_focus_mode(args.mode)
     
     # Start progress tracking with final goals
     from focus_launcher import ProgressPopup, get_popup_interval_setting
