@@ -1,8 +1,7 @@
 {
-  "enabled_plugins": [
-    "cs_marble"
-  ],
+  "enabled_plugins": [],
   "app_settings": {
-    "popup_interval_minutes": 4
+    "popup_interval_minutes": 15,
+    "breath_duration_seconds": 5
   }
 }

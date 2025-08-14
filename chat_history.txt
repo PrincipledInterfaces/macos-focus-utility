@@ -1,0 +1,8 @@
+user: how should i get started today
+assistant: SYSINFPULL: installed_apps
+
+I see you have a lot of creative and productivity apps installed, including Figma, Visual Studio Code, and Blender. If you're working on a project, I'd be happy to help you stay focused. Which app are you currently using, or would you like to switch to one of these?
+user: hello
+assistant: It's great to see you're starting your day. You have a 60-minute focus session scheduled today. Your current focus session length is 60 minutes. What's your plan for today?
+user: what should I tackle first?
+assistant: Since you have a 60-minute focus session scheduled, why not start by reviewing your todo list in Visual Studio Code? Would you like me to open it for you?

@@ -8,6 +8,7 @@ groq_api_key.txt
 *.log
 active_programs.log
 browser_tabs.log
+agent_history.txt
 
 # System files
 .DS_Store

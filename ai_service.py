@@ -40,6 +40,52 @@ class AIService:
         """Check if AI service is available"""
         return self.client is not None
     
+    def ask(self, prompt: str, model: str = "llama-3.1-8b-instant", max_tokens: int = 1024, system_prompt: str = None, conversation_history: list = None) -> str:
+        """
+        General-purpose AI function for any prompt.
+        
+        Args:
+            prompt: The prompt to send to the AI
+            model: The model to use (default: llama-3.1-8b-instant)
+            max_tokens: Maximum tokens in response (default: 1024)
+            system_prompt: Optional system prompt to set AI behavior
+            conversation_history: Optional list of previous messages for context
+            
+        Returns:
+            The AI's response as a string, or empty string if error
+        """
+        if not self.is_available():
+            print("AI service not available")
+            return ""
+        
+        try:
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            
+            # Add conversation history if provided
+            if conversation_history:
+                messages.extend(conversation_history)
+            
+            # Add current user message
+            messages.append({"role": "user", "content": prompt})
+            
+            # Debug: print messages being sent (commented out)
+            # print(f"DEBUG: Sending {len(messages)} messages to API:")
+            # for i, msg in enumerate(messages):
+            #     print(f"  Message {i}: role='{msg.get('role')}', content_length={len(str(msg.get('content', '')))}")
+            
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=0.7
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"Error calling AI service: {e}")
+            return ""
+    
     def get_installed_applications(self) -> List[str]:
         """Get list of all installed applications on macOS"""
         apps = []
@@ -115,7 +161,7 @@ Be thoughtful about categorization:
 - Creativity: Design software, media editing, music production, writing tools
 - Social media detox: Everything except social media apps, games, entertainment streaming
 
-Only include apps that clearly belong in each category. When in doubt, be conservative."""
+Only include apps that clearly belong in each category. When in doubt, be conservative. Apps may belong in more than one category."""
 
             response = self.client.chat.completions.create(
                 messages=[
@@ -318,6 +364,25 @@ Example format:
                     f.write('127.0.0.1 youtube-ui.l.google.com\n')
                     f.write('127.0.0.1 youtu.be\n')
                     f.write('127.0.0.1 www.youtu.be\n')
+
+# Convenience functions for easy importing
+def ask_ai(prompt: str, model: str = "llama-3.1-8b-instant", max_tokens: int = 1024) -> str:
+    """
+    Convenience function for general AI queries.
+    
+    Args:
+        prompt: The prompt to send to the AI
+        model: The model to use (default: llama-3.1-8b-instant) 
+        max_tokens: Maximum tokens in response (default: 1024)
+        
+    Returns:
+        The AI's response as a string, or empty string if error
+    
+    Example:
+        from ai_service import ask_ai
+        response = ask_ai("Explain quantum computing in simple terms")
+    """
+    return ai_service.ask(prompt, model, max_tokens)
 
 # Global instance
 ai_service = AIService()

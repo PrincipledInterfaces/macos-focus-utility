@@ -1202,6 +1202,10 @@ class ProgressPopup(QWidget):
         self.init_ui()
         self.setup_system_tray()
         self.setup_timers()
+        
+        # Initialize AI Assistant
+        self.ai_assistant_window = None
+        self.setup_ai_assistant()
     
     def init_ui(self):
         self.setWindowTitle('Focus Session')
@@ -1598,6 +1602,11 @@ class ProgressPopup(QWidget):
         self.show_hide_action.triggered.connect(self.toggle_visibility)
         tray_menu.addAction(self.show_hide_action)
         
+        # AI Assistant action
+        ai_action = QAction("AI Assistant", self)
+        ai_action.triggered.connect(self.show_ai_assistant)
+        tray_menu.addAction(ai_action)
+        
         tray_menu.addSeparator()
         
         # End session action
@@ -1615,6 +1624,60 @@ class ProgressPopup(QWidget):
         
         # Track visibility state
         self.is_visible = True
+    
+    def setup_ai_assistant(self):
+        """Initialize AI assistant components"""
+        try:
+            from ai_service import AIService
+            from agent import chat, clear_chat_history
+            from plugin_system import PluginBase
+            
+            # Create a plugin instance that has access to this ProgressPopup
+            class SessionPlugin(PluginBase):
+                def __init__(self, progress_popup):
+                    super().__init__()
+                    self.name = "Session AI Plugin"
+                    self._progress_popup = progress_popup
+                
+                def initialize(self) -> bool:
+                    return True
+                
+                def cleanup(self):
+                    pass
+            
+            self.ai_service = AIService()
+            self.ai_plugin = SessionPlugin(self)
+            
+            # Clear chat history at session start
+            clear_chat_history()
+            
+        except Exception as e:
+            print(f"Error setting up AI assistant: {e}")
+            self.ai_service = None
+            self.ai_plugin = None
+    
+    def show_ai_assistant(self):
+        """Show the AI assistant chat window"""
+        if not self.ai_service or not self.ai_service.is_available():
+            self.show_ai_error("AI service not available. Please check your groq_api_key.txt file.")
+            return
+        
+        if self.ai_assistant_window is None:
+            from ai_chat_window import AIAssistantWindow
+            self.ai_assistant_window = AIAssistantWindow(self.ai_service, self.ai_plugin)
+        
+        self.ai_assistant_window.show()
+        self.ai_assistant_window.raise_()
+        self.ai_assistant_window.activateWindow()
+    
+    def show_ai_error(self, message):
+        """Show AI error message"""
+        from PyQt5.QtWidgets import QMessageBox
+        msg = QMessageBox()
+        msg.setWindowTitle("AI Assistant Error")
+        msg.setText(message)
+        msg.setIcon(QMessageBox.Warning)
+        msg.exec_()
     
     def tray_icon_clicked(self, reason):
         """Handle system tray icon clicks"""
@@ -2576,14 +2639,48 @@ class SessionSummary(QWidget):
             import traceback
             traceback.print_exc()
         
-        # Clean up tray icon before closing
-        if self.progress_popup and hasattr(self.progress_popup, 'tray_icon'):
+        # Clean up AI assistant window before closing
+        if self.progress_popup and hasattr(self.progress_popup, 'ai_assistant_window'):
             try:
-                self.progress_popup.tray_icon.hide()
-                self.progress_popup.tray_icon = None
-                print("DEBUG: Tray icon cleaned up")
+                if self.progress_popup.ai_assistant_window:
+                    # Force close and delete the window
+                    self.progress_popup.ai_assistant_window.hide()
+                    self.progress_popup.ai_assistant_window.deleteLater()
+                    self.progress_popup.ai_assistant_window = None
+                    print("DEBUG: AI assistant window cleaned up")
             except Exception as e:
-                print(f"DEBUG: Error cleaning up tray icon: {e}")
+                print(f"DEBUG: Error cleaning up AI assistant window: {e}")
+        
+        # Clean up progress popup completely
+        if self.progress_popup:
+            try:
+                # Stop any timers
+                if hasattr(self.progress_popup, 'timer'):
+                    self.progress_popup.timer.stop()
+                if hasattr(self.progress_popup, 'app_timer'):
+                    self.progress_popup.app_timer.stop()
+                if hasattr(self.progress_popup, 'browser_timer'):
+                    self.progress_popup.browser_timer.stop()
+                
+                # Clean up tray icon before deleting popup
+                if hasattr(self.progress_popup, 'tray_icon'):
+                    self.progress_popup.tray_icon.hide()
+                    self.progress_popup.tray_icon = None
+                
+                # Hide and delete the progress popup
+                self.progress_popup.hide()
+                self.progress_popup.deleteLater()
+                self.progress_popup = None
+                print("DEBUG: Progress popup cleaned up")
+            except Exception as e:
+                print(f"DEBUG: Error cleaning up progress popup: {e}")
+        
+        # Force close any remaining windows
+        from PyQt5.QtWidgets import QApplication
+        app = QApplication.instance()
+        if app:
+            app.closeAllWindows()
+            print("DEBUG: All windows closed")
         
         self.close()
         
@@ -3545,6 +3642,9 @@ class FocusLauncher:
         try:
             # Change to the script directory
             script_dir = os.path.dirname(os.path.abspath(__file__))
+            
+            # Clear agent_history.txt at the start of each focus session
+            self.clear_agent_history(script_dir)
             os.chdir(script_dir)
             
             # Handle custom modes
@@ -3595,9 +3695,23 @@ class FocusLauncher:
         except subprocess.CalledProcessError as e:
             print(f"Error launching focus mode: {e}")
             sys.exit(1)
+    
+    def clear_agent_history(self, script_dir=None):
+        """Clear chat history files at the start of a focus session"""
+        try:
+            if script_dir is None:
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+            
+            # Clear chat history file
+            history_file = os.path.join(script_dir, 'chat_history.txt')
+            if os.path.exists(history_file):
+                with open(history_file, 'w') as f:
+                    f.write('')  # Write empty content to clear the file
+            
+            print("Agent history cleared for new focus session")
+            
         except Exception as e:
-            print(f"Unexpected error: {e}")
-            sys.exit(1)
+            print(f"Warning: Could not clear agent history: {e}")
     
     def run_with_password(self, mode, password):
         """Run the focus mode setup with the provided password"""
@@ -3637,6 +3751,259 @@ class FocusLauncher:
         except Exception as e:
             print(f"Error setting up focus mode with password: {e}")
             raise
+
+class AIAssistantWindow(QWidget):
+    """AI Assistant chat window for focus sessions"""
+    
+    def __init__(self, ai_service, ai_plugin):
+        super().__init__()
+        self.ai_service = ai_service
+        self.ai_plugin = ai_plugin
+        self.init_ui()
+    
+    def init_ui(self):
+        self.setWindowTitle('AI Assistant - Focus Helper')
+        self.setWindowIcon(get_app_icon())
+        self.setFixedSize(500, 600)
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
+        
+        # Center the window
+        self.center_window()
+        
+        # Modern styling
+        self.setStyleSheet("""
+            AIAssistantWindow {
+                background-color: #f5f5f7;
+            }
+            QTextEdit {
+                background-color: white;
+                border: 1px solid #d1d1d6;
+                border-radius: 8px;
+                padding: 12px;
+                font-size: 14px;
+                font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+            }
+            QLineEdit {
+                background-color: white;
+                border: 2px solid #d1d1d6;
+                border-radius: 8px;
+                padding: 10px;
+                font-size: 14px;
+                font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+            }
+            QLineEdit:focus {
+                border-color: #007aff;
+            }
+            QPushButton {
+                background-color: #007aff;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 20px;
+                font-size: 14px;
+                font-weight: 600;
+                font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+            }
+            QPushButton:hover {
+                background-color: #0056b3;
+            }
+            QPushButton:pressed {
+                background-color: #004080;
+            }
+        """)
+        
+        layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        # Title
+        title = QLabel("AI Focus Assistant")
+        title.setStyleSheet("""
+            font-size: 18px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 10px;
+        """)
+        layout.addWidget(title)
+        
+        # Chat display using scroll area for better styling control
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: #f5f5f7;
+            }
+            QScrollArea > QWidget > QWidget {
+                background-color: #f5f5f7;
+            }
+        """)
+        
+        # Chat container widget
+        self.chat_widget = QWidget()
+        self.chat_layout = QVBoxLayout(self.chat_widget)
+        self.chat_layout.setContentsMargins(10, 10, 10, 10)
+        self.chat_layout.setSpacing(8)
+        self.chat_layout.addStretch()  # Push messages to top
+        
+        scroll_area.setWidget(self.chat_widget)
+        layout.addWidget(scroll_area)
+        
+        # Add initial message
+        self.add_message("AI", "Hello! I'm your AI assistant. I can help you stay focused and productive during your session.\n\nHow can I help you today?")
+        
+        # Input section
+        input_layout = QHBoxLayout()
+        
+        self.chat_input = QLineEdit()
+        self.chat_input.setPlaceholderText("Type your message here...")
+        self.chat_input.returnPressed.connect(self.send_message)
+        input_layout.addWidget(self.chat_input)
+        
+        send_button = QPushButton("Send")
+        send_button.clicked.connect(self.send_message)
+        input_layout.addWidget(send_button)
+        
+        layout.addLayout(input_layout)
+        self.setLayout(layout)
+        
+        # Focus on input
+        self.chat_input.setFocus()
+    
+    def center_window(self):
+        """Center the window on screen"""
+        from PyQt5.QtWidgets import QDesktopWidget
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+    
+    def send_message(self):
+        """Send message to AI and display response"""
+        user_input = self.chat_input.text().strip()
+        if not user_input:
+            return
+        
+        # Clear input
+        self.chat_input.clear()
+        
+        # Add user message to display
+        self.add_message("You", user_input)
+        
+        # Get AI response
+        try:
+            from agent import chat
+            response = chat(self.ai_service, user_input, self.ai_plugin)
+            self.add_message("AI", response)
+        except Exception as e:
+            self.add_message("AI", f"Sorry, I encountered an error: {e}")
+        
+        # Focus back on input
+        self.chat_input.setFocus()
+    
+    def add_message(self, sender, message):
+        """Add a message to the chat display with styled bubbles"""
+        # Filter out SYSINFPULL commands from display
+        if "SYSINFPULL:" in message:
+            # Remove the SYSINFPULL part and any text after it
+            message = message.split("SYSINFPULL:")[0].strip()
+            # If there's no text left after removing SYSINFPULL, don't display anything
+            if not message:
+                return
+        
+        # Escape HTML characters in the message
+        import html
+        message = html.escape(message).replace('\n', '<br>')
+        
+        # Get timestamp
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%H:%M")
+        
+        # Style based on sender
+        if sender == "AI":
+            # Blue bubble, left-aligned
+            bubble_html = f"""
+            <div style="margin: 8px 50px 8px 0px; text-align: left;">
+                <div style="
+                    background-color: #007aff;
+                    color: white;
+                    padding: 12px 16px;
+                    border-radius: 20px;
+                    display: inline-block;
+                    max-width: 80%;
+                    font-size: 14px;
+                    line-height: 1.4;
+                    word-wrap: break-word;
+                    margin: 6px;
+                    drop-shadow: 5px 20px 14px rgba(0,0,0,0.1);
+                ">
+                    {message}
+                </div>
+                <div style="font-size: 11px; color: #8E8E93; margin-top: 4px; margin-left: 4px;">
+                    {timestamp}
+                </div>
+            </div>
+            """
+        else:  # User
+            # Grey bubble, right-aligned
+            bubble_html = f"""
+            <div style="margin: 8px 0px 8px 50px; text-align: right;">
+                <div style="
+                    background-color: #E5E5EA;
+                    color: #000000;
+                    padding: 12px 16px;
+                    border-radius: 20px;
+                    display: inline-block;
+                    max-width: 80%;
+                    font-size: 14px;
+                    line-height: 1.4;
+                    word-wrap: break-word;
+                    margin: 6px;
+                    drop-shadow: 5px 20px 14px rgba(0,0,0,0.1);
+                ">
+                    {message}
+                </div>
+                <div style="font-size: 11px; color: #8E8E93; margin-top: 4px; margin-right: 4px;">
+                    {timestamp}
+                </div>
+            </div>
+            """
+        
+        # Get current HTML and append new message
+        current_html = self.chat_display.toHtml()
+        
+        # If this is the first message, start with a clean HTML structure
+        if not hasattr(self, '_html_initialized'):
+            current_html = """
+            <html>
+            <head>
+                <style>
+                    body { 
+                        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+                        margin: 0; 
+                        padding: 8px;
+                        background-color: #f5f5f7;
+                        
+                    }
+                </style>
+            </head>
+            <body>
+            """
+            self._html_initialized = True
+        
+        # Insert the new message before the closing body tag
+        if "</body>" in current_html:
+            current_html = current_html.replace("</body>", bubble_html + "</body>")
+        else:
+            current_html += bubble_html
+        
+        self.chat_display.setHtml(current_html)
+        
+        # Scroll to bottom
+        scrollbar = self.chat_display.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
 
 if __name__ == "__main__":
     try:
