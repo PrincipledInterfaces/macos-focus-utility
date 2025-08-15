@@ -201,6 +201,36 @@ def add_todo_item(task, plugin_var):
     
     return "Unable to add todo - no active focus session"
 
+def complete_todo_item(task, plugin_var):
+    """Mark a todo item as completed with improved matching"""
+    if hasattr(plugin_var, '_progress_popup') and plugin_var._progress_popup:
+        # Try multiple matching strategies
+        all_items = plugin_var.get_all_checklist_items()
+        
+        for item in all_items:
+            # Strategy 1: Exact match
+            if item == task:
+                return plugin_var.set_checklist_item_checked(item, True)
+            
+            # Strategy 2: Match without bullet point
+            if item.startswith('• ') and item[2:] == task:
+                return plugin_var.set_checklist_item_checked(item, True)
+            
+            # Strategy 3: Match with added bullet point
+            if task.startswith('• ') and item == task[2:]:
+                return plugin_var.set_checklist_item_checked(item, True)
+                
+            # Strategy 4: Case insensitive partial match
+            if task.lower() in item.lower() or item.lower() in task.lower():
+                # Only use partial match if it's a substantial portion (>50% of the shorter string)
+                min_len = min(len(task.strip('• ')), len(item.strip('• ')))
+                if min_len > 5:  # Only for longer strings
+                    return plugin_var.set_checklist_item_checked(item, True)
+        
+        return False
+    
+    return False
+
 def clear_todo_list(plugin_var):
     """Clear the todo list"""
     if hasattr(plugin_var, '_progress_popup') and plugin_var._progress_popup:
