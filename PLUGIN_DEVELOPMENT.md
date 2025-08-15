@@ -31,6 +31,7 @@ Plugins can:
 - **Extend the UI** with configuration dialogs and status displays
 - **React to session events** (start, update, end)
 - **Send notifications** during focus sessions
+- **Interact with the AI Agent** system for intelligent suggestions
 
 ### Prerequisites
 
@@ -2569,6 +2570,145 @@ def on_goals_analyzed(self, goals: List[str], goals_text: str) -> List[str]:
 - **Cleanup**: Remove any timers or background processes when session ends
 
 This injection mechanism is what makes the email plugin so powerful - it can analyze incoming emails during a focus session and dynamically add relevant tasks to the user's checklist without interrupting their flow.
+
+---
+
+## AI Agent Integration
+
+The Focus Utility includes a built-in AI Agent powered by Google Gemini 2.5 Flash that provides intelligent assistance during focus sessions. Plugins can interact with and enhance the AI system.
+
+### AI Agent Capabilities
+
+The AI Agent can:
+- **Manage todos**: Add, complete, and clear todo items
+- **Control applications**: Open and close applications with user permission
+- **Navigate websites**: Open URLs and search queries
+- **Set reminders**: Create timed notifications
+- **Provide session info**: Check remaining time, progress, and goals
+- **Offer suggestions**: Context-aware recommendations based on workflow
+
+### Accessing AI Agent Functions
+
+While plugins cannot directly call AI agent functions, they can provide data that enhances the AI's responses:
+
+#### 1. Enhancing AI Context Through Goals
+```python
+def on_goals_analyzed(self, goals: List[str], goals_text: str) -> List[str]:
+    """Add context that will be available to the AI agent"""
+    enhanced_goals = goals.copy()
+    
+    # Add plugin-specific context that AI can see
+    plugin_context = self.get_relevant_context()
+    for item in plugin_context:
+        enhanced_goals.append(f"• Plugin Context: {item}")
+    
+    return enhanced_goals
+```
+
+#### 2. Providing Real-time Updates
+```python
+def on_session_update(self, elapsed_minutes: float, progress_percent: float):
+    """Update external systems that AI might reference"""
+    # Update external dashboard that AI could query
+    self.update_external_status({
+        'plugin_status': 'active',
+        'last_update': time.time(),
+        'session_progress': progress_percent
+    })
+```
+
+### AI Agent Commands Available to Users
+
+When users interact with the AI Agent, these commands are available:
+
+#### System Information Commands
+- `installed_apps` - View all installed applications
+- `running_apps` - See currently running applications
+- `todo_list` - Access current session goals
+- `todo_completed` - View completed tasks
+- `session_length` - Get scheduled session duration
+- `session_time` - Check remaining time
+
+#### Action Commands  
+- `add_todo:<task>` - Add new tasks to session
+- `remove_todo:<task>` - Mark tasks as completed
+- `clear_todo` - Clear all todo items
+- `open_app:<app_name>` - Launch applications
+- `close_app:<app_name>` - Quit applications
+- `open_site:<url>` - Open websites
+- `set_reminder:<minutes>:<message>` - Set timed reminders
+
+### Plugin Integration Examples
+
+#### Example 1: Context-Aware Task Suggestions
+```python
+class SmartTaskPlugin(PluginBase):
+    def on_goals_analyzed(self, goals: List[str], goals_text: str) -> List[str]:
+        """Add intelligent task suggestions that AI can reference"""
+        enhanced_goals = goals.copy()
+        
+        # Analyze current work context
+        current_context = self.analyze_work_context()
+        
+        # Add contextual information
+        if current_context['has_meetings_soon']:
+            enhanced_goals.append("• Context: Meeting preparation needed")
+        
+        if current_context['pending_reviews']:
+            enhanced_goals.append("• Context: Code reviews waiting")
+            
+        return enhanced_goals
+```
+
+#### Example 2: AI-Informed Notifications
+```python
+class IntelligentNotificationPlugin(PluginBase):
+    def on_session_update(self, elapsed_minutes: float, progress_percent: float):
+        """Provide smart notifications based on AI insights"""
+        
+        # Get current todo status from the AI system
+        all_todos = self.get_all_checklist_items()
+        completed_todos = self.get_completed_checklist_items()
+        
+        completion_rate = len(completed_todos) / len(all_todos) if all_todos else 0
+        
+        # Smart notification logic
+        if elapsed_minutes > 30 and completion_rate < 0.3:
+            self.suggest_ai_consultation()
+    
+    def suggest_ai_consultation(self):
+        """Suggest user consult AI agent for help"""
+        self.show_notification(
+            "Focus Assistant", 
+            "Consider asking the AI Agent for task prioritization help!"
+        )
+```
+
+### AI Agent File Structure
+
+The AI system consists of several key files:
+
+```
+ai_system/
+├── agent.py              # Main AI agent logic and system integration
+├── ai_chat_window.py     # Chat interface for AI interactions  
+├── agent_timer.py        # Timer system for AI-set reminders
+└── gemini_service.py     # Google Gemini API integration
+```
+
+### Best Practices for AI Integration
+
+1. **Enhance, Don't Replace**: Use plugins to provide context and data that makes the AI more useful
+2. **Respect User Control**: The AI requires user permission for actions - plugins should follow this pattern
+3. **Provide Context**: Add meaningful context to goals that the AI can reference
+4. **Stay Updated**: Monitor AI interactions to update external systems appropriately
+
+### AI Agent Limitations for Plugins
+
+- Plugins cannot directly invoke AI commands
+- AI responses are managed by the main application
+- Plugin data influences AI through the goals system and session context
+- Direct AI API access should use the gemini_service module
 
 #### 7. Real-World Example: Email Plugin
 

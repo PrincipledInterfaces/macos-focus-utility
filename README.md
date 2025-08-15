@@ -7,7 +7,7 @@ A powerful macOS focus and productivity application that helps you stay concentr
 - **Focus Modes**: Pre-configured modes for different types of work (Productivity, Creativity, Social Media Detox)
 - **Smart App Blocking**: Automatically closes distracting applications
 - **Website Blocking**: Optional website blocking with admin authentication
-- **AI Goal Analysis**: Intelligent goal prioritization using Groq AI or local fallback
+- **AI Assistant Agent**: Interactive AI helper using Gemini 2.5 Flash with system integration and conversation history
 - **Progress Tracking**: Real-time session monitoring with interactive goal checkboxes
 - **Plugin System**: Extensible architecture for custom functionality with comprehensive API
 - **CLI Interface**: Command-line access for automation and scripting
@@ -92,6 +92,33 @@ python3 focusmode.py --deactivate
 - **Blocks**: All social media platforms, entertainment sites, gaming, and streaming services
 - **Allows**: Essential work applications and productivity tools only
 
+## AI Assistant
+
+The built-in AI assistant provides intelligent help during focus sessions with comprehensive system integration.
+
+### Key Capabilities
+- **Todo Management**: Add, complete, and clear todo items in real-time
+- **App Control**: Open and close applications with permission-based system
+- **Website Navigation**: Open websites and search queries
+- **Session Information**: Check remaining time, session length, and progress
+- **Timer System**: Set reminders with custom messages
+- **Smart Suggestions**: Context-aware recommendations based on your workflow
+
+### Agent Commands
+The AI can perform actions through system integration commands:
+- `installed_apps` - View all installed applications
+- `running_apps` - See currently running applications  
+- `todo_list` - Access current session goals
+- `add_todo:<task>` - Add new tasks to your session
+- `remove_todo:<task>` - Mark tasks as completed
+- `open_app:<app_name>` - Launch specific applications
+- `close_app:<app_name>` - Quit running applications
+- `open_site:<url>` - Open websites in default browser
+- `set_reminder:<minutes>:<message>` - Set timed reminders
+
+### Accessing the AI Assistant
+Click the "Agent" button in the progress popup during any focus session to open the chat interface. The AI maintains conversation history and can help you stay productive throughout your session.
+
 ## Plugin System
 
 The focus utility includes a powerful plugin system that allows you to extend functionality with custom features. 
@@ -114,7 +141,7 @@ The focus utility includes a powerful plugin system that allows you to extend fu
 ## Configuration
 
 ### API Keys
-- **Groq AI**: Add your API key to `groq_api_key.txt` for AI goal analysis
+- **Google Gemini AI**: Add your API key to `gemini_api_key.txt` for AI assistant functionality
 - **Plugin Settings**: Configure individual plugins via `plugin_settings.json`
 
 ### Focus Mode Customization
@@ -128,6 +155,10 @@ focus-utility/
 ├── focusmode.py              # CLI interface
 ├── plugin_system.py          # Plugin architecture and management
 ├── plugin_settings_dialog.py # Plugin configuration interface
+├── agent.py                  # AI assistant system integration
+├── ai_chat_window.py         # AI chat interface
+├── agent_timer.py            # Timer system for reminders
+├── gemini_service.py         # Google Gemini AI service
 ├── modes/                    # Focus mode definitions
 │   ├── productivity.txt      # Productivity mode app list
 │   ├── creativity.txt        # Creativity mode app list
@@ -140,6 +171,9 @@ focus-utility/
 │   ├── email_assistant/      # Email integration plugin
 │   ├── positive_feedback/    # Encouragement plugin
 │   └── control_surface/      # Hardware control plugin
+├── sound/                    # Audio files for notifications
+│   ├── message-agent.mp3     # AI message sound
+│   └── message-user.mp3      # User message sound
 ├── CODE_EXPLANATION.md       # Technical documentation
 └── PLUGIN_DEVELOPMENT.md     # Plugin development guide
 ```
@@ -152,7 +186,7 @@ focus-utility/
 
 ### Dependencies
 ```bash
-pip install PyQt5 requests
+pip install PyQt5 requests google-generativeai plyer cryptography
 ```
 
 ## Examples
