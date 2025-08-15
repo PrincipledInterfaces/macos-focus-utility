@@ -1,4 +1,4 @@
-from ai_service import ask_ai, AIService, ai_service
+from gemini_service import ask_gemini, GeminiService, gemini_service
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QComboBox, QPushButton, QFrame, QLineEdit, QDialog, QGraphicsDropShadowEffect,
                              QSpinBox, QTextEdit, QCheckBox, QScrollArea, QProgressBar, QGraphicsBlurEffect,
@@ -8,6 +8,7 @@ from PyQt5.QtGui import QFont, QPalette, QColor, QPainter, QPen, QBrush, QPixmap
 import os
 import subprocess
 from plugin_system import PluginBase
+from agent_timer import set_timer
 
 # AI Agent which ties into todo list, installed apps, and other system features
 
@@ -28,12 +29,14 @@ SYSTEM_PROMPT = "You are a helpful assistant for a focus app. Keep responses SHO
 "  - 'todo_list' to get the user's todo list\n" \
 "  - 'todo_completed' to get a list of todo items that have been completed\n" \
 "  - 'session_length' to get the scheduled focus session length\n" \
-"  - 'add_todo:<task>' to add a task to the todo list (NOTE: only works with existing session todos, cannot add new ones)\n" \
+"  - 'add_todo:<task>' to add a new task to the todo list\n" \
 "  - 'remove_todo:<task>' to mark a task from the todo list as completed\n" \
 "  - 'clear_todo' to clear the todo list\n" \
 "  - 'session_time' to get the remaining time in the current focus session\n" \
 "  - 'open_app:<app_name>' to open an application by name\n" \
 "  - 'close_app:<app_name>' to close an application by name\n" \
+"  - 'open_site:<url>' to open a website in the default browser\n" \
+"  - 'set_reminder:<time>:<message>' Example: set_reminder:15:Check the oven. Note: <time> is the number of minutes from the current time, not a clock time like 3:00 PM.\n" \
 " a full message might look like: 'SYSINFPULL: installed_apps, todo_list'\n" \
 "CRITICAL RULES:\n" \
 "1. NEVER claim you have done something unless you actually used a SYSINFPULL command to do it\n" \
@@ -50,6 +53,7 @@ SYSTEM_PROMPT = "You are a helpful assistant for a focus app. Keep responses SHO
 "- Use them proactively at the START of your response when the user asks about progress, productivity, apps, or session info\n" \
 "- Common triggers: 'how am I doing', 'my progress', 'what apps', 'time left', 'my todos'\n" \
 "- Then provide a complete conversational response based on that information\n\n" \
+"If apps are open that don't appear to be relevant to the todos or session, or are seemingly unused, you can suggest closing them.\n" \
 "For action commands (add_todo, remove_todo, clear_todo, open_app, close_app):\n" \
 "1. ALWAYS check installed_apps first to see what apps are available\n" \
 "2. Ask the user for permission using the EXACT app names from the installed list\n" \
@@ -58,7 +62,7 @@ SYSTEM_PROMPT = "You are a helpful assistant for a focus app. Keep responses SHO
 "5. Use the exact app name from installed_apps, not generic names\n\n" \
 "When opening/closing apps, check installed_apps first to verify the app exists, then ask for permission.\n" \
 "Your abilities are limited to the system features provided.\n" \
-"YOU CANNOT: set timers, schedule reminders, remember things across sessions, access the internet, or perform any actions outside the SYSINFPULL commands.\n" \
+"YOU CANNOT: remember things across sessions, or perform any actions outside the SYSINFPULL commands.\n" \
 
 HISTORY_FILE = "chat_history.txt"
 MAX_HISTORY_TURNS = 10  # how many back-and-forths to keep
@@ -146,10 +150,56 @@ def get_session_length(plugin_var):
     return "No active focus session - session length only available during focus sessions"
 
 def add_todo_item(task, plugin_var):
-    """Add a task to the todo list - currently not supported during active sessions"""
-    # The current system only works with todos created during goal setup
-    # New todos cannot be added during an active focus session
-    return f"I can't add new todo items during an active focus session. The todo list was created when you started your session. However, I can help you work with your existing todos: {', '.join(plugin_var.get_all_checklist_items()) if hasattr(plugin_var, 'get_all_checklist_items') else 'none found'}"
+    """Add a task to the todo list"""
+    if hasattr(plugin_var, '_progress_popup') and plugin_var._progress_popup:
+        progress_popup = plugin_var._progress_popup
+        
+        # Format task with bullet point if it doesn't have one
+        formatted_task = task if task.startswith('•') else f"• {task}"
+        
+        # Add to goals list
+        progress_popup.goals.append(formatted_task)
+        
+        # Add checkbox to UI if the goals layout exists
+        if hasattr(progress_popup, 'goals_layout') and hasattr(progress_popup, 'goal_checkboxes'):
+            from PyQt5.QtWidgets import QCheckBox
+            checkbox = QCheckBox(formatted_task)
+            checkbox.setStyleSheet("""
+                QCheckBox {
+                    font-size: 14px;
+                    color: #1d1d1f;
+                    padding: 8px 12px;
+                    background: rgba(255, 255, 255, 0.8);
+                    border-radius: 8px;
+                    margin: 2px 0;
+                }
+                QCheckBox::indicator {
+                    width: 16px;
+                    height: 16px;
+                    margin-right: 8px;
+                }
+                QCheckBox::indicator:unchecked {
+                    border: 2px solid #d1d1d6;
+                    border-radius: 4px;
+                    background: white;
+                }
+                QCheckBox::indicator:checked {
+                    border: 2px solid #007aff;
+                    border-radius: 4px;
+                    background: #007aff;
+                    image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEwIDNMNC41IDguNUwyIDYiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=);
+                }
+            """)
+            checkbox.stateChanged.connect(progress_popup.goal_checked)
+            
+            # Insert before the last item (stretch) in the layout
+            insert_index = progress_popup.goals_layout.count() - 1
+            progress_popup.goals_layout.insertWidget(insert_index, checkbox)
+            progress_popup.goal_checkboxes.append(checkbox)
+        
+        return f"Added new todo: {formatted_task}"
+    
+    return "Unable to add todo - no active focus session"
 
 def clear_todo_list(plugin_var):
     """Clear the todo list"""
@@ -249,8 +299,8 @@ def chat(ai, user_input, plugin_var):
                 commands_used.append(f"tried to add todo")
             elif cmd.startswith("remove_todo:"):
                 task = cmd.split("remove_todo:")[1].strip()
-                plugin_var.set_checklist_item_checked(task, False)
-                info["remove_todo"] = f"Removed todo: {task}"
+                plugin_var.set_checklist_item_checked(task, True)
+                info["remove_todo"] = f"Completed todo: {task}"
                 commands_used.append(f"completed todo")
             elif cmd == "clear_todo":
                 info["clear_todo"] = clear_todo_list(plugin_var)
@@ -271,12 +321,31 @@ def chat(ai, user_input, plugin_var):
                 close_application(app_name)
                 info["close_app"] = f"Closed application: {app_name}"
                 commands_used.append(f"closed {app_name}")
+            elif cmd.startswith("open_site:"):
+                url = cmd.split("open_site:")[1].strip()
+                try:
+                    subprocess.run(['open', url], check=True)
+                    info["open_site"] = f"Opened website: {url}"
+                    commands_used.append(f"opened site {url}")
+                except subprocess.CalledProcessError:
+                    info["open_site"] = f"Failed to open website: {url}"
+                    commands_used.append(f"failed to open site {url}")
+            elif cmd.startswith("set_reminder:"):
+                parts = cmd.split("set_reminder:")[1].strip().split(":")
+                if len(parts) == 2:
+                    time, message = parts
+                    set_timer(int(time), message)
+                    info["set_reminder"] = f"Reminder set for {time.strip()}: {message.strip()}"
+                    commands_used.append(f"set reminder for {time.strip()}")
+                else:
+                    info["set_reminder"] = "Invalid reminder format"
+                    commands_used.append("failed to set reminder")
         
         # Create a new prompt with the gathered info and get final response
-        info_prompt = "Based on the user's request, here is the system information you requested:\n"
+        info_prompt = f"The user asked: '{user_input}'\n\nBased on this request, here is the system information you requested:\n"
         for key, value in info.items():
             info_prompt += f"{key}: {value}\n"
-        info_prompt += "\nPlease provide a helpful response based on this information."
+        info_prompt += "\nPlease provide a helpful response to the user's original request based on this information."
         
         # Get final response with the system info (no recursion)
         ai_response = ai.ask(info_prompt, system_prompt=system_prompt, conversation_history=history)
@@ -307,10 +376,12 @@ class SimplePlugin(PluginBase):
 if __name__ == "__main__":
     while True:
         user_input = input("You: ")
-        ai = AIService()
+        ai = GeminiService()
         plugin = SimplePlugin()
         if ai.is_available():
-            response = chat(ai, user_input, plugin)
+            response, commands = chat(ai, user_input, plugin)
             print(f"AI Response: {response}")
+            if commands:
+                print(f"Commands used: {commands}")
         else:
-            print("AI service not available (check groq_api_key.txt)")
+            print("AI service not available (check gemini_api_key.txt)")

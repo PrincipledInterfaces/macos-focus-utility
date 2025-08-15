@@ -1628,7 +1628,7 @@ class ProgressPopup(QWidget):
     def setup_ai_assistant(self):
         """Initialize AI assistant components"""
         try:
-            from ai_service import AIService
+            from gemini_service import GeminiService
             from agent import chat, clear_chat_history
             from plugin_system import PluginBase
             
@@ -1645,7 +1645,7 @@ class ProgressPopup(QWidget):
                 def cleanup(self):
                     pass
             
-            self.ai_service = AIService()
+            self.ai_service = GeminiService()
             self.ai_plugin = SessionPlugin(self)
             
             # Clear chat history at session start
@@ -1659,7 +1659,7 @@ class ProgressPopup(QWidget):
     def show_ai_assistant(self):
         """Show the AI assistant chat window"""
         if not self.ai_service or not self.ai_service.is_available():
-            self.show_ai_error("AI service not available. Please check your groq_api_key.txt file.")
+            self.show_ai_error("AI service not available. Please check your gemini_api_key.txt file.")
             return
         
         if self.ai_assistant_window is None:
@@ -2711,7 +2711,7 @@ class PasswordDialog(QDialog):
     def init_ui(self):
         self.setWindowTitle('Authentication Required')
         self.setWindowIcon(get_app_icon())
-        self.setFixedSize(400, 250)
+        self.setFixedSize(400, 300)
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
         
         # Add shadow effect

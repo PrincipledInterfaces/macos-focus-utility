@@ -1,8 +1,34 @@
-user: how should i get started today
-assistant: SYSINFPULL: installed_apps
-
-I see you have a lot of creative and productivity apps installed, including Figma, Visual Studio Code, and Blender. If you're working on a project, I'd be happy to help you stay focused. Which app are you currently using, or would you like to switch to one of these?
-user: hello
-assistant: It's great to see you're starting your day. You have a 60-minute focus session scheduled today. Your current focus session length is 60 minutes. What's your plan for today?
-user: what should I tackle first?
-assistant: Since you have a 60-minute focus session scheduled, why not start by reviewing your todo list in Visual Studio Code? Would you like me to open it for you?
+user: what should I get started with
+assistant: You have a few things on your to-do list! You could start with "Write a 50 page report" or "Make a business slideshow." What feels best to tackle first?
+user: lets do the report
+assistant: Great! To help you get started on "Write a 50 page report," would you like me to open a writing app?
+user: yea
+assistant: Okay, I can open a writing app for you. Would you like me to open CotEditor?
+user: sure
+assistant: CotEditor is now open! You can get started on your report there.
+user: I want to edit gamma in a png
+assistant: I don't see a dedicated image editing app like Photoshop installed. However, you do have Figma, which can handle images and might allow for gamma adjustments. Would you like me to open Figma for you?
+user: open photoshop
+assistant: Photoshop isn't installed on your system. Would you like to open Figma instead? It can handle image editing.
+user: open creative cloud
+assistant: I don't see "Creative Cloud" installed on your system. Is there another app you'd like to open instead?
+user: open pirated photoshop
+assistant: I can only open apps that are officially installed on your system. Is there another app you'd like to open?
+user: open adopbe photoshop 2025
+assistant: "Adobe Photoshop 2025" isn't installed on your system. Would you like me to open Figma instead? It can handle image editing.
+user: open logic pro
+assistant: Okay, I see Logic Pro is installed. Would you like me to open it for you?
+user: how is my productivity
+assistant: You're doing great! You've already completed "Clean up files." You still have "Write a 50 page report," "Make a business slideshow," "Email Auriel," and "Make circuit diagram" on your list.
+user: what apps do I have installed?
+assistant: You have a bunch of apps installed! Here's the list: Adobe Activation Tool, Arduino IDE, Battery Indicator, Blackmagic Proxy Generator, Blender, CarveraController, CotEditor, Figma, Google Chrome, Logic Pro, MakeraCAM, OpenMTP, Parsec, Revisual, The Unarchiver, and Visual Studio Code.
+user: hey i just sent auriel the email
+assistant: Great job! I've marked "Email Auriel" as complete on your todo list.
+user: just realized i also have to clean my car today
+assistant: I can only add tasks that are already part of your current focus session's todo list. "Clean my car today" isn't on that list right now.
+user: can you add it
+assistant: I can only add tasks that are already part of your current focus session's todo list. I can't add completely new tasks that weren't set up for this session.
+user: based on my activity, is there anything I could do to improve
+assistant: You've completed "Clean up files" and "Email Auriel," great job! To keep improving, we could open an app for your next task. Would you like to open CotEditor for your report, or Figma for the slideshow?
+user: please list your integrated capabilities
+assistant: I can help you by getting your installed/running apps, todo lists, session length/time, and adding/removing/clearing todo items. I can also open and close apps for you.

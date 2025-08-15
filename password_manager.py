@@ -34,13 +34,6 @@ class SecurePasswordManager:
             
             # Combine multiple machine-specific identifiers
             machine_data = f"{platform.node()}{platform.machine()}{getpass.getuser()}"
-            
-            # Add some system-specific data
-            try:
-                import uuid
-                machine_data += str(uuid.uuid1())
-            except:
-                pass
                 
             # Create a stable key from machine data
             key_material = hashlib.sha256(machine_data.encode()).digest()
