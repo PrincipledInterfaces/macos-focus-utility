@@ -2,8 +2,61 @@
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QLineEdit, QPushButton, QScrollArea, QGraphicsDropShadowEffect)
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QColor
+import subprocess
+
+class AIWorkerThread(QThread):
+    """Background thread for AI processing to prevent UI freezing"""
+    response_ready = pyqtSignal(str, object)  # (response, commands_used)
+    error_occurred = pyqtSignal(str)  # error message
+    
+    def __init__(self, ai_service, ai_plugin, user_input, timeout_seconds=30):
+        super().__init__()
+        self.ai_service = ai_service
+        self.ai_plugin = ai_plugin
+        self.user_input = user_input
+        self.timeout_seconds = timeout_seconds
+        self._response_received = False
+    
+    def run(self):
+        """Run in background thread with timeout"""
+        # Start timeout timer
+        timeout_timer = QTimer()
+        timeout_timer.timeout.connect(self._on_timeout)
+        timeout_timer.start(self.timeout_seconds * 1000)  # Convert to milliseconds
+        
+        try:
+            from agent import chat
+            response, commands_used = chat(self.ai_service, self.user_input, self.ai_plugin)
+            
+            # Stop timeout timer
+            timeout_timer.stop()
+            
+            if not self._response_received:
+                self._response_received = True
+                
+                # Check for empty response
+                if not response or response.strip() == "":
+                    self.error_occurred.emit("AI returned an empty response. Please try again.")
+                else:
+                    # Emit success signal
+                    self.response_ready.emit(response, commands_used)
+            
+        except Exception as e:
+            # Stop timeout timer
+            timeout_timer.stop()
+            
+            if not self._response_received:
+                self._response_received = True
+                # Emit error signal
+                self.error_occurred.emit(f"Sorry, I encountered an error: {e}")
+    
+    def _on_timeout(self):
+        """Handle timeout"""
+        if not self._response_received:
+            self._response_received = True
+            self.error_occurred.emit(f"AI request timed out after {self.timeout_seconds} seconds. Please try again.")
 
 def get_app_icon():
     """Get the application icon for dock/window display"""
@@ -103,7 +156,7 @@ class AIAssistantWindow(QWidget):
         layout.setSpacing(15)
         
         # Title
-        title = QLabel("🤖 AI Focus Assistant")
+        title = QLabel("AI Focus Assistant")
         title.setStyleSheet("""
             font-size: 18px;
             font-weight: 600;
@@ -170,30 +223,166 @@ class AIAssistantWindow(QWidget):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
     
+    def play_sound(self, filename):
+        """Play sound using macOS afplay command"""
+        try:
+            import os
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            sound_path = os.path.join(script_dir, 'sound', filename)
+            if os.path.exists(sound_path):
+                subprocess.Popen(['afplay', sound_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            print(f"Error playing sound: {e}")
+    
+    def show_loading_message(self):
+        """Show loading animation message"""
+        self.loading_message = "💭 Thinking"
+        self.loading_dots = 0
+        
+        # Add initial loading message
+        self.add_message("AI", self.loading_message + "...", skip_sound=True)
+        
+        # Start animation timer
+        self.loading_timer = QTimer()
+        self.loading_timer.timeout.connect(self.update_loading_animation)
+        self.loading_timer.start(500)  # Update every 500ms
+    
+    def update_loading_animation(self):
+        """Update the loading dots animation"""
+        self.loading_dots = (self.loading_dots + 1) % 4
+        dots = "." * self.loading_dots if self.loading_dots > 0 else "..."
+        loading_text = f"{self.loading_message}{dots}"
+        
+        # Find the last message (should be our loading message) and update it
+        if self.chat_layout.count() > 1:  # At least one message plus stretch
+            last_item_index = self.chat_layout.count() - 2  # -1 for stretch, -1 for 0-based
+            last_item = self.chat_layout.itemAt(last_item_index)
+            if last_item and last_item.widget():
+                self._update_bubble_text_recursive(last_item.widget(), loading_text)
+    
+    def _update_bubble_text_recursive(self, widget, new_text):
+        """Recursively find and update bubble text"""
+        if hasattr(widget, 'setText') and hasattr(widget, 'text'):
+            current_text = widget.text()
+            if current_text and current_text.startswith("💭"):
+                widget.setText(new_text)
+                return True
+        
+        # Check children
+        if hasattr(widget, 'children'):
+            for child in widget.children():
+                if hasattr(child, 'widget'):
+                    child_widget = child.widget() if callable(child.widget) else None
+                    if child_widget and self._update_bubble_text_recursive(child_widget, new_text):
+                        return True
+                elif self._update_bubble_text_recursive(child, new_text):
+                    return True
+        
+        return False
+    
+    def remove_loading_message(self):
+        """Remove loading message and stop animation"""
+        if hasattr(self, 'loading_timer'):
+            self.loading_timer.stop()
+            delattr(self, 'loading_timer')
+        
+        # Find and remove the last message if it's a loading message
+        if self.chat_layout.count() > 1:  # At least one message plus stretch
+            last_item_index = self.chat_layout.count() - 2  # -1 for stretch, -1 for 0-based
+            last_item = self.chat_layout.itemAt(last_item_index)
+            if last_item and last_item.widget():
+                container = last_item.widget()
+                if self._container_has_loading_message(container):
+                    self.chat_layout.removeItem(last_item)
+                    container.deleteLater()
+    
+    def _container_has_loading_message(self, container):
+        """Check if container contains the loading message"""
+        return self._find_loading_bubble_recursive(container) is not None
+    
+    def _find_loading_bubble_recursive(self, widget):
+        """Recursively find loading bubble"""
+        if hasattr(widget, 'text') and hasattr(widget, 'setText'):
+            current_text = widget.text()
+            if current_text and current_text.startswith("💭"):
+                return widget
+        
+        # Check children
+        if hasattr(widget, 'children'):
+            for child in widget.children():
+                if hasattr(child, 'widget'):
+                    child_widget = child.widget() if callable(child.widget) else None
+                    if child_widget:
+                        result = self._find_loading_bubble_recursive(child_widget)
+                        if result:
+                            return result
+                else:
+                    result = self._find_loading_bubble_recursive(child)
+                    if result:
+                        return result
+        
+        return None
+    
     def send_message(self):
-        """Send message to AI and display response"""
+        """Send message to AI and display response (non-blocking)"""
         user_input = self.chat_input.text().strip()
         if not user_input:
             return
         
-        # Clear input
+        # Prevent multiple simultaneous requests
+        if hasattr(self, 'ai_worker') and self.ai_worker.isRunning():
+            print("AI request already in progress, ignoring new request")
+            return
+        
+        # Clear input immediately
         self.chat_input.clear()
         
-        # Add user message to display
+        # Add user message to display immediately
         self.add_message("You", user_input)
         
-        # Get AI response
-        try:
-            from agent import chat
-            response, commands_used = chat(self.ai_service, user_input, self.ai_plugin)
-            self.add_message("AI", response, commands_used)
-        except Exception as e:
-            self.add_message("AI", f"Sorry, I encountered an error: {e}")
+        # Show loading animation immediately
+        self.show_loading_message()
+        
+        # Disable input while processing
+        self.chat_input.setEnabled(False)
+        
+        # Create and start background thread for AI processing
+        self.ai_worker = AIWorkerThread(self.ai_service, self.ai_plugin, user_input)
+        self.ai_worker.response_ready.connect(self.on_ai_response)
+        self.ai_worker.error_occurred.connect(self.on_ai_error)
+        self.ai_worker.finished.connect(self.on_ai_finished)
+        self.ai_worker.start()
+    
+    def on_ai_response(self, response, commands_used):
+        """Handle successful AI response"""
+        # Remove loading message
+        self.remove_loading_message()
+        
+        # Add AI response
+        self.add_message("AI", response, commands_used)
+    
+    def on_ai_error(self, error_message):
+        """Handle AI error"""
+        # Remove loading message
+        self.remove_loading_message()
+        
+        # Add error message
+        self.add_message("AI", error_message)
+    
+    def on_ai_finished(self):
+        """Called when AI processing is complete (success or error)"""
+        # Re-enable input
+        self.chat_input.setEnabled(True)
         
         # Focus back on input
         self.chat_input.setFocus()
+        
+        # Clean up worker
+        if hasattr(self, 'ai_worker'):
+            self.ai_worker.deleteLater()
+            delattr(self, 'ai_worker')
     
-    def add_message(self, sender, message, commands_used=None):
+    def add_message(self, sender, message, commands_used=None, skip_sound=False):
         """Add a message to the chat display with properly styled bubbles"""
         # Filter out SYSINFPULL commands from display
         if "SYSINFPULL:" in message:
@@ -231,6 +420,8 @@ class AIAssistantWindow(QWidget):
         # Style based on sender
         if sender == "AI":
             # AI message: blue bubble, left-aligned
+            if not skip_sound:
+                self.play_sound('message-agent.mp3') 
             bubble.setStyleSheet("""
                 QLabel {
                     background-color: #007aff;
@@ -264,6 +455,8 @@ class AIAssistantWindow(QWidget):
             
         else:  # User
             # User message: grey bubble, right-aligned
+            if not skip_sound:
+                self.play_sound('message-user.mp3') 
             bubble.setStyleSheet("""
                 QLabel {
                     background-color: #E5E5EA;

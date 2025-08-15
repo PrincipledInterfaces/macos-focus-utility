@@ -4,6 +4,7 @@ Figma
 Google Chrome
 Logic Pro
 MakeraCAM
+OpenMTP
 Parsec
 The Unarchiver
 Visual Studio Code

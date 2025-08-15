@@ -1183,11 +1183,13 @@ class FinalGoalsDialog(QDialog):
         self.move(qr.topLeft())
 
 class ProgressPopup(QWidget):
-    def __init__(self, session_duration, goals, popup_interval=1):
+    def __init__(self, session_duration, goals, popup_interval=1, parent_launcher=None):
         super().__init__()
         self.session_duration = session_duration  # in minutes
         self.goals = goals
         self.popup_interval = popup_interval  # in minutes
+        self.parent_launcher = parent_launcher  # Reference to FocusLauncher
+        self.ai_notification_sent = False  # Flag to send AI notification only once
         print(f"DEBUG: ProgressPopup initialized with interval: {popup_interval} minutes")
         self.start_time = datetime.now()
         self.completed_goals = set()
@@ -1454,6 +1456,28 @@ class ProgressPopup(QWidget):
         """)
         button_layout.addWidget(stop_btn)
         
+        # Agent button
+        agent_btn = QPushButton("Agent")
+        agent_btn.clicked.connect(self.show_ai_assistant)
+        agent_btn.setStyleSheet("""
+            QPushButton {
+                padding: 10px 20px;
+                font-size: 14px;
+                font-weight: 500;
+                border: 1px solid #34c759;
+                border-radius: 10px;
+                background-color: white;
+                color: #34c759;
+            }
+            QPushButton:hover { 
+                background-color: #f0f9f0; 
+            }
+            QPushButton:pressed {
+                background-color: #e5f3e5;
+            }
+        """)
+        button_layout.addWidget(agent_btn)
+        
         # Keep Focusing button
         close_btn = QPushButton("Keep Focusing")
         close_btn.clicked.connect(self.continue_session)
@@ -1603,7 +1627,7 @@ class ProgressPopup(QWidget):
         tray_menu.addAction(self.show_hide_action)
         
         # AI Assistant action
-        ai_action = QAction("AI Assistant", self)
+        ai_action = QAction("AI Agent", self)
         ai_action.triggered.connect(self.show_ai_assistant)
         tray_menu.addAction(ai_action)
         
@@ -1706,15 +1730,7 @@ class ProgressPopup(QWidget):
             self.show_hide_action.setText("Show Progress")
             self.is_visible = False
             
-            # Show tray message on first hide
-            if not hasattr(self, '_tray_message_shown'):
-                self.tray_icon.showMessage(
-                    "Focus Session",
-                    "Session continues in background. Click icon to show progress.",
-                    QSystemTrayIcon.Information,
-                    3000
-                )
-                self._tray_message_shown = True
+            # Hide notification removed per user request
         else:
             # No tray icon, allow normal close
             event.accept()
@@ -1983,6 +1999,13 @@ class ProgressPopup(QWidget):
     def continue_session(self):
         """Hide the popup and continue the session"""
         self.hide()
+        
+        # Send AI assistant notification on first continue (when user gets to desktop)
+        if not self.ai_notification_sent and self.parent_launcher:
+            self.ai_notification_sent = True
+            # Delay notification slightly to ensure desktop is focused
+            QTimer.singleShot(1000, self.parent_launcher.send_ai_reminder_notification)
+        
         # Give focus back to the desktop/finder
         try:
             subprocess.run([
@@ -3620,7 +3643,9 @@ class FocusLauncher:
         # Start progress tracking with final goals
         popup_interval = get_popup_interval_setting()
         print(f"DEBUG: Using popup interval: {popup_interval} minutes")
-        self.progress_popup = ProgressPopup(session_duration, final_goals, popup_interval=popup_interval)
+        self.progress_popup = ProgressPopup(session_duration, final_goals, popup_interval=popup_interval, parent_launcher=self)
+        
+        # Note: AI notification will be sent when user dismisses first progress popup
         
         # Set progress popup reference for plugin system
         try:
@@ -3751,6 +3776,111 @@ class FocusLauncher:
         except Exception as e:
             print(f"Error setting up focus mode with password: {e}")
             raise
+    
+    def request_notification_permission(self):
+        """Request notification permission from macOS"""
+        try:
+            # Check if we can send notifications
+            test_script = 'display notification "Permission test" with title "Focus Utility"'
+            result = subprocess.run(['osascript', '-e', test_script], 
+                                  capture_output=True, text=True, timeout=3)
+            
+            if result.returncode == 0:
+                print("Notification permission already granted")
+                return True
+            else:
+                print("Requesting notification permission...")
+                # Show a dialog asking user to enable notifications
+                permission_script = '''
+                display dialog "Focus Utility needs notification permission to remind you about the AI Agent. Please:" & return & return & "1. Open System Settings > Notifications" & return & "2. Find 'Terminal' or 'osascript'" & return & "3. Enable 'Allow Notifications'" & return & return & "Click OK when done, or Cancel to skip." buttons {"Cancel", "OK"} default button "OK" with title "Enable Notifications"
+                '''
+                subprocess.run(['osascript', '-e', permission_script], check=False)
+                return False
+                
+        except Exception as e:
+            print(f"Error checking notification permission: {e}")
+            return False
+
+    def send_ai_reminder_notification(self):
+        """Send a system notification reminding user about AI assistant"""
+        print("🤖 Focus session started! AI Agent is ready - click the Agent button in your progress popup.")
+        
+        # Try Python-based notification methods
+        notification_sent = False
+        
+        # Method 1: Try using plyer (cross-platform notifications)
+        try:
+            from plyer import notification
+            notification.notify(
+                title='🤖 Focus Session Started',
+                message='AI Agent is ready! Click the Agent button.',
+                timeout=5
+            )
+            print("✅ Python notification sent successfully")
+            notification_sent = True
+        except ImportError:
+            print("DEBUG: plyer not available, trying pync...")
+        except Exception as e:
+            print(f"DEBUG: plyer notification failed: {e}")
+        
+        # Method 2: Try using pync (macOS specific)
+        if not notification_sent:
+            try:
+                import pync
+                pync.notify(
+                    'AI Agent is ready! Click the Agent button.',
+                    title='🤖 Focus Session Started',
+                    sound='Glass'
+                )
+                print("✅ pync notification sent successfully")
+                notification_sent = True
+            except ImportError:
+                print("DEBUG: pync not available, trying PyQt notifications...")
+            except Exception as e:
+                print(f"DEBUG: pync notification failed: {e}")
+        
+        # Method 3: Try PyQt5 system tray notification
+        if not notification_sent:
+            try:
+                from PyQt5.QtWidgets import QSystemTrayIcon
+                if hasattr(self, 'app') and QSystemTrayIcon.isSystemTrayAvailable():
+                    # Create temporary system tray icon for notification
+                    tray_icon = QSystemTrayIcon()
+                    tray_icon.setIcon(get_app_icon())
+                    tray_icon.show()
+                    tray_icon.showMessage(
+                        "🤖 Focus Session Started",
+                        "AI Agent is ready! Click the Agent button.",
+                        QSystemTrayIcon.Information,
+                        5000  # 5 seconds
+                    )
+                    print("✅ PyQt system tray notification sent successfully")
+                    notification_sent = True
+                else:
+                    print("DEBUG: System tray not available")
+            except Exception as e:
+                print(f"DEBUG: PyQt notification failed: {e}")
+        
+        # Method 4: Fallback to AppleScript (but probably won't work)
+        if not notification_sent:
+            try:
+                result = subprocess.run([
+                    'osascript', '-e', 
+                    'display notification "AI Agent is ready! Click the Agent button." with title "Focus Started"'
+                ], capture_output=True, text=True, timeout=3)
+                if result.returncode == 0:
+                    print("✅ AppleScript notification sent successfully")
+                    notification_sent = True
+                else:
+                    print(f"DEBUG: AppleScript failed: {result.stderr}")
+            except Exception as e:
+                print(f"DEBUG: AppleScript notification failed: {e}")
+        
+        # If all methods failed, show instructions
+        if not notification_sent:
+            print("💡 To enable visual notifications:")
+            print("   pip install plyer  (or)  pip install pync")
+            print("   System Settings > Notifications > Terminal (enable)")
 
 class AIAssistantWindow(QWidget):
     """AI Assistant chat window for focus sessions"""
@@ -4004,6 +4134,7 @@ class AIAssistantWindow(QWidget):
         # Scroll to bottom
         scrollbar = self.chat_display.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
+
 
 if __name__ == "__main__":
     try:

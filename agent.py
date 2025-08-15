@@ -45,7 +45,7 @@ SYSTEM_PROMPT = "You are a helpful assistant for a focus app. Keep responses SHO
 "4. If you need system information, use SYSINFPULL at the START of your response, get the data, then give a complete answer\n" \
 "5. Before adding new todos, always check the existing todo_list first to avoid duplicates\n" \
 "6. When mentioning work on existing projects, refer to existing todo items rather than creating new ones\n" \
-"7. Be proactive about suggesting and opening relevant apps, but ask for permission first\n" \
+"7. Be proactive about suggesting, closing and opening relevant apps, but ask for permission first\n" \
 "8. Only claim capabilities you actually have through the SYSINFPULL commands\n" \
 "9. NEVER use generic app names like 'writing app' - always check installed_apps to get the exact app name\n" \
 "10. When opening apps, use the EXACT name from the installed_apps list\n\n" \
@@ -63,6 +63,7 @@ SYSTEM_PROMPT = "You are a helpful assistant for a focus app. Keep responses SHO
 "When opening/closing apps, check installed_apps first to verify the app exists, then ask for permission.\n" \
 "Your abilities are limited to the system features provided.\n" \
 "YOU CANNOT: remember things across sessions, or perform any actions outside the SYSINFPULL commands.\n" \
+"when the user shows desire to work on a specific thing, you can ask to close apps or websites that seem unrelated to that task.\n" \
 
 HISTORY_FILE = "chat_history.txt"
 MAX_HISTORY_TURNS = 10  # how many back-and-forths to keep
@@ -329,9 +330,13 @@ def chat(ai, user_input, plugin_var):
                 commands_used.append(f"tried to add todo")
             elif cmd.startswith("remove_todo:"):
                 task = cmd.split("remove_todo:")[1].strip()
-                plugin_var.set_checklist_item_checked(task, True)
-                info["remove_todo"] = f"Completed todo: {task}"
-                commands_used.append(f"completed todo")
+                success = complete_todo_item(task, plugin_var)
+                if success:
+                    info["remove_todo"] = f"Completed todo: {task}"
+                    commands_used.append(f"completed todo")
+                else:
+                    info["remove_todo"] = f"Could not find todo to complete: {task}. Available todos: {', '.join(plugin_var.get_all_checklist_items()) if hasattr(plugin_var, 'get_all_checklist_items') else 'none found'}"
+                    commands_used.append(f"failed to complete todo")
             elif cmd == "clear_todo":
                 info["clear_todo"] = clear_todo_list(plugin_var)
                 commands_used.append("cleared todos")
@@ -354,22 +359,55 @@ def chat(ai, user_input, plugin_var):
             elif cmd.startswith("open_site:"):
                 url = cmd.split("open_site:")[1].strip()
                 try:
-                    subprocess.run(['open', url], check=True)
+                    # Fix URL formatting if needed
+                    if not url.startswith(('http://', 'https://')):
+                        if '.' in url and not url.startswith('www.'):
+                            url = f"https://{url}"
+                        elif url.startswith('www.'):
+                            url = f"https://{url}"
+                        else:
+                            url = f"https://www.google.com/search?q={url}"
+                    
+                    result = subprocess.run(['open', url], check=True, capture_output=True, text=True)
                     info["open_site"] = f"Opened website: {url}"
                     commands_used.append(f"opened site {url}")
-                except subprocess.CalledProcessError:
-                    info["open_site"] = f"Failed to open website: {url}"
+                except subprocess.CalledProcessError as e:
+                    error_msg = f"Failed to open website: {url} (Error: {e.stderr if hasattr(e, 'stderr') else str(e)})"
+                    info["open_site"] = error_msg
+                    commands_used.append(f"failed to open site {url}")
+                except Exception as e:
+                    error_msg = f"Failed to open website: {url} (Error: {str(e)})"
+                    info["open_site"] = error_msg
                     commands_used.append(f"failed to open site {url}")
             elif cmd.startswith("set_reminder:"):
                 parts = cmd.split("set_reminder:")[1].strip().split(":")
-                if len(parts) == 2:
-                    time, message = parts
-                    set_timer(int(time), message)
-                    info["set_reminder"] = f"Reminder set for {time.strip()}: {message.strip()}"
-                    commands_used.append(f"set reminder for {time.strip()}")
+                if len(parts) >= 2:
+                    try:
+                        time_str = parts[0].strip()
+                        message = ":".join(parts[1:]).strip()  # Handle messages with colons
+                        
+                        # Validate time is a number
+                        time_minutes = float(time_str)
+                        if time_minutes <= 0:
+                            raise ValueError("Time must be positive")
+                        if time_minutes > 1440:  # More than 24 hours
+                            raise ValueError("Time must be less than 24 hours")
+                        
+                        set_timer(time_minutes, message)
+                        info["set_reminder"] = f"Reminder set for {time_minutes} minutes: {message}"
+                        commands_used.append(f"set reminder for {time_minutes} minutes")
+                        
+                    except ValueError as e:
+                        error_msg = f"Invalid time format '{parts[0]}': {str(e)}"
+                        info["set_reminder"] = error_msg
+                        commands_used.append("failed to set reminder - invalid time")
+                    except Exception as e:
+                        error_msg = f"Error setting reminder: {str(e)}"
+                        info["set_reminder"] = error_msg
+                        commands_used.append("failed to set reminder")
                 else:
-                    info["set_reminder"] = "Invalid reminder format"
-                    commands_used.append("failed to set reminder")
+                    info["set_reminder"] = "Invalid reminder format. Use: set_reminder:15:Check the oven"
+                    commands_used.append("failed to set reminder - invalid format")
         
         # Create a new prompt with the gathered info and get final response
         info_prompt = f"The user asked: '{user_input}'\n\nBased on this request, here is the system information you requested:\n"
