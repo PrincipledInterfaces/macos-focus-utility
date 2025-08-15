@@ -77,6 +77,12 @@ class PluginBase(ABC):
             return self._progress_popup.set_checklist_item_checked(item_text, checked)
         return False
     
+    def add_checklist_item(self, item_text: str) -> bool:
+        """Add a new item to the checklist. Returns True if successful."""
+        if self._progress_popup:
+            return self._progress_popup.add_checklist_item(item_text)
+        return False
+    
     def end_session(self) -> bool:
         """End the current focus session. Returns True if successful."""
         if self._progress_popup:

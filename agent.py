@@ -64,6 +64,7 @@ SYSTEM_PROMPT = "You are a helpful assistant for a focus app. Keep responses SHO
 "Your abilities are limited to the system features provided.\n" \
 "YOU CANNOT: remember things across sessions, or perform any actions outside the SYSINFPULL commands.\n" \
 "when the user shows desire to work on a specific thing, you can ask to close apps or websites that seem unrelated to that task.\n" \
+"Opening websites relevant to the user's work or tasks is great."
 
 HISTORY_FILE = "chat_history.txt"
 MAX_HISTORY_TURNS = 10  # how many back-and-forths to keep
@@ -152,53 +153,19 @@ def get_session_length(plugin_var):
 
 def add_todo_item(task, plugin_var):
     """Add a task to the todo list"""
-    if hasattr(plugin_var, '_progress_popup') and plugin_var._progress_popup:
-        progress_popup = plugin_var._progress_popup
-        
-        # Format task with bullet point if it doesn't have one
-        formatted_task = task if task.startswith('•') else f"• {task}"
-        
-        # Add to goals list
-        progress_popup.goals.append(formatted_task)
-        
-        # Add checkbox to UI if the goals layout exists
-        if hasattr(progress_popup, 'goals_layout') and hasattr(progress_popup, 'goal_checkboxes'):
-            from PyQt5.QtWidgets import QCheckBox
-            checkbox = QCheckBox(formatted_task)
-            checkbox.setStyleSheet("""
-                QCheckBox {
-                    font-size: 14px;
-                    color: #1d1d1f;
-                    padding: 8px 12px;
-                    background: rgba(255, 255, 255, 0.8);
-                    border-radius: 8px;
-                    margin: 2px 0;
-                }
-                QCheckBox::indicator {
-                    width: 16px;
-                    height: 16px;
-                    margin-right: 8px;
-                }
-                QCheckBox::indicator:unchecked {
-                    border: 2px solid #d1d1d6;
-                    border-radius: 4px;
-                    background: white;
-                }
-                QCheckBox::indicator:checked {
-                    border: 2px solid #007aff;
-                    border-radius: 4px;
-                    background: #007aff;
-                    image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEwIDNMNC41IDguNUwyIDYiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=);
-                }
-            """)
-            checkbox.stateChanged.connect(progress_popup.goal_checked)
-            
-            # Insert before the last item (stretch) in the layout
-            insert_index = progress_popup.goals_layout.count() - 1
-            progress_popup.goals_layout.insertWidget(insert_index, checkbox)
-            progress_popup.goal_checkboxes.append(checkbox)
-        
-        return f"Added new todo: {formatted_task}"
+    print(f"DEBUG: add_todo_item called with task='{task}', plugin_var type={type(plugin_var)}")
+    print(f"DEBUG: plugin_var has add_checklist_item: {hasattr(plugin_var, 'add_checklist_item')}")
+    
+    if hasattr(plugin_var, 'add_checklist_item'):
+        # Use the proper plugin API method
+        print(f"DEBUG: Calling plugin_var.add_checklist_item('{task}')")
+        success = plugin_var.add_checklist_item(task)
+        print(f"DEBUG: add_checklist_item returned: {success}")
+        if success:
+            formatted_task = task if task.startswith('•') else f"• {task}"
+            return f"Added new todo: {formatted_task}"
+        else:
+            return "Failed to add todo item"
     
     return "Unable to add todo - no active focus session"
 
@@ -410,13 +377,14 @@ def chat(ai, user_input, plugin_var):
                     commands_used.append("failed to set reminder - invalid format")
         
         # Create a new prompt with the gathered info and get final response
-        info_prompt = f"The user asked: '{user_input}'\n\nBased on this request, here is the system information you requested:\n"
+        info_prompt = f"The user asked: '{user_input}'\n\nI executed these system commands:\n"
         for key, value in info.items():
             info_prompt += f"{key}: {value}\n"
-        info_prompt += "\nPlease provide a helpful response to the user's original request based on this information."
+        info_prompt += "\nNow provide a SHORT, friendly response to the user confirming what was done. Do NOT use any SYSINFPULL commands in your response."
         
         # Get final response with the system info (no recursion)
         ai_response = ai.ask(info_prompt, system_prompt=system_prompt, conversation_history=history)
+        print(f"DEBUG: Final AI response after SYSINFPULL: '{ai_response}'")
 
     # Save both messages only once
     save_message("user", user_input)

@@ -1538,6 +1538,60 @@ class ProgressPopup(QWidget):
         
         return False
     
+    def add_checklist_item(self, item_text: str) -> bool:
+        """Add a new item to the checklist. Returns True if successful."""
+        print(f"DEBUG: add_checklist_item called with: '{item_text}'")
+        if not hasattr(self, 'goals_layout') or not hasattr(self, 'goal_checkboxes'):
+            print("DEBUG: Missing goals_layout or goal_checkboxes")
+            return False
+        
+        # Format task with bullet point if it doesn't have one
+        formatted_task = item_text if item_text.startswith('•') else f"• {item_text}"
+        
+        # Add to goals list
+        self.goals.append(formatted_task)
+        
+        try:
+            from PyQt5.QtWidgets import QCheckBox
+            checkbox = QCheckBox(formatted_task)
+            checkbox.setStyleSheet("""
+                QCheckBox {
+                    font-size: 14px;
+                    color: #1d1d1f;
+                    padding: 8px 12px;
+                    background: rgba(255, 255, 255, 0.8);
+                    border-radius: 8px;
+                    margin: 2px 0;
+                }
+                QCheckBox::indicator {
+                    width: 16px;
+                    height: 16px;
+                    margin-right: 8px;
+                }
+                QCheckBox::indicator:unchecked {
+                    border: 2px solid #d1d1d6;
+                    border-radius: 4px;
+                    background: white;
+                }
+                QCheckBox::indicator:checked {
+                    border: 2px solid #007aff;
+                    border-radius: 4px;
+                    background: #007aff;
+                    image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEwIDNMNC41IDguNUwyIDYiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=);
+                }
+            """)
+            checkbox.stateChanged.connect(self.goal_checked)
+            
+            # Insert before the last item (stretch) in the layout
+            insert_index = self.goals_layout.count() - 1
+            self.goals_layout.insertWidget(insert_index, checkbox)
+            self.goal_checkboxes.append(checkbox)
+            
+            return True
+        except Exception as e:
+            print(f"Error adding checkbox to UI: {e}")
+            return False
+    
     def center_window(self):
         from PyQt5.QtWidgets import QDesktopWidget
         qr = self.frameGeometry()
@@ -1705,8 +1759,8 @@ class ProgressPopup(QWidget):
     
     def tray_icon_clicked(self, reason):
         """Handle system tray icon clicks"""
-        if reason == QSystemTrayIcon.Trigger:  # Left click
-            self.toggle_visibility()
+        # Removed automatic toggle on left click - context menu is already available on right-click
+        pass
     
     def toggle_visibility(self):
         """Toggle progress dialog visibility"""
@@ -1999,6 +2053,10 @@ class ProgressPopup(QWidget):
     def continue_session(self):
         """Hide the popup and continue the session"""
         self.hide()
+        # Update tray menu button state
+        if hasattr(self, 'show_hide_action'):
+            self.show_hide_action.setText("Show Progress")
+        self.is_visible = False
         
         # Send AI assistant notification on first continue (when user gets to desktop)
         if not self.ai_notification_sent and self.parent_launcher:

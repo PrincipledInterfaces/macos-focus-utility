@@ -1,2 +1,2 @@
-user: remind me to go to the shitter in 30 seconds
-assistant: Ok, I've set a reminder for 1 minute to go to the shitter.
+user: can you add b to the checklist
+assistant: SYSINFPULL: add_todo:b
