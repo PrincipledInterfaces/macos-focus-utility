@@ -87,27 +87,93 @@ class AIService:
             return ""
     
     def get_installed_applications(self) -> List[str]:
-        """Get list of all installed applications on macOS"""
-        apps = []
+        """Get comprehensive list of all installed applications on macOS"""
+        apps = set()  # Use set to avoid duplicates
         
-        # Get applications from /Applications
-        try:
-            for item in os.listdir('/Applications'):
-                if item.endswith('.app'):
-                    app_name = item.replace('.app', '')
-                    apps.append(app_name)
-        except:
-            pass
-        
-        # Get applications from ~/Applications
-        try:
-            home_apps = os.path.expanduser('~/Applications')
-            if os.path.exists(home_apps):
-                for item in os.listdir(home_apps):
+        def scan_directory_deep(directory, max_depth=3, current_depth=0):
+            """Recursively scan directory for .app bundles"""
+            try:
+                for item in os.listdir(directory):
+                    item_path = os.path.join(directory, item)
                     if item.endswith('.app'):
                         app_name = item.replace('.app', '')
-                        apps.append(app_name)
-        except:
+                        apps.add(app_name)
+                    elif (os.path.isdir(item_path) and 
+                          not item.startswith('.') and 
+                          current_depth < max_depth and
+                          not any(skip in item.lower() for skip in ['framework', 'plugin', 'helper', 'service', 'daemon'])):
+                        # Recursively scan subdirectories, but skip common non-app directories
+                        scan_directory_deep(item_path, max_depth, current_depth + 1)
+            except (PermissionError, OSError):
+                pass
+        
+        # 1. Traditional .app scanning in /Applications and ~/Applications
+        scan_directory_deep('/Applications')
+        
+        home_apps = os.path.expanduser('~/Applications')
+        if os.path.exists(home_apps):
+            scan_directory_deep(home_apps)
+        
+        # 2. Get currently running applications (catches non-.app apps)
+        try:
+            result = subprocess.run(['ps', '-eo', 'comm,args'], capture_output=True, text=True)
+            for line in result.stdout.split('\n'):
+                if line.strip() and not line.startswith('COMMAND'):
+                    parts = line.strip().split(None, 1)
+                    if len(parts) >= 1:
+                        app_path = parts[0]
+                        
+                        # Extract app name from various formats
+                        if '.app/' in app_path:
+                            # Standard .app format: /Applications/AppName.app/Contents/MacOS/AppName
+                            app_name = app_path.split('.app/')[0].split('/')[-1]
+                            apps.add(app_name)
+                        elif '/Applications/' in app_path and not app_path.endswith('.app'):
+                            # Non-.app format: /Applications/SomeName/bin/executable
+                            path_parts = app_path.replace('/Applications/', '').split('/')
+                            if path_parts and not any(skip in path_parts[0].lower() for skip in ['utilities', 'xcode']):
+                                apps.add(path_parts[0])
+        except Exception:
+            pass
+        
+        # 3. Check common installation directories for non-.app applications
+        additional_dirs = [
+            '/usr/local/bin',
+            '/opt',
+            '/usr/local/opt',
+            '/Applications/Utilities'
+        ]
+        
+        for directory in additional_dirs:
+            if os.path.exists(directory):
+                try:
+                    for item in os.listdir(directory):
+                        item_path = os.path.join(directory, item)
+                        if os.path.isdir(item_path) and not item.startswith('.'):
+                            # Check if this looks like an application directory
+                            if any(os.path.exists(os.path.join(item_path, exe)) 
+                                   for exe in ['bin', 'Contents', item]):
+                                apps.add(item)
+                        elif item.endswith('.app'):
+                            app_name = item.replace('.app', '')
+                            apps.add(app_name)
+                except (PermissionError, OSError):
+                    pass
+        
+        # 4. Use system_profiler to get additional application information
+        try:
+            result = subprocess.run(['system_profiler', 'SPApplicationsDataType', '-xml'], 
+                                  capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                # Parse for application names (basic parsing, could be enhanced with plistlib)
+                import re
+                app_names = re.findall(r'<key>_name</key>\s*<string>([^<]+)</string>', result.stdout)
+                for app_name in app_names:
+                    # Clean up the name
+                    clean_name = app_name.strip()
+                    if clean_name and not clean_name.startswith('com.'):
+                        apps.add(clean_name)
+        except (subprocess.TimeoutExpired, Exception):
             pass
         
         # Filter out system apps and duplicates
@@ -123,8 +189,8 @@ class AIService:
             'WindowServer', 'Dock', 'SystemUIServer', 'loginwindow'
         }
         
-        # Remove system apps and return unique apps
-        user_apps = [app for app in set(apps) if app not in system_apps]
+        # Remove system apps and return sorted unique apps
+        user_apps = [app for app in apps if app not in system_apps and app.strip()]
         return sorted(user_apps)
     
     def categorize_apps_for_modes(self, apps: List[str]) -> Dict[str, List[str]]:
@@ -142,26 +208,28 @@ Given this list of applications installed on a user's Mac:
 
 {apps_text}
 
-Please categorize each app for the following focus modes:
+Please categorize each app for EXACTLY these three focus modes:
 1. PRODUCTIVITY - Apps that help with work, productivity, coding, writing, business tasks
 2. CREATIVITY - Apps for creative work like design, music, video editing, art, writing
 3. SOCIAL_MEDIA_DETOX - Apps that are allowed during social media detox (productivity tools, utilities, creative apps, but NOT social media, games, entertainment)
 
 For each app, determine which modes it should be ALLOWED in. Many apps may be allowed in multiple modes.
 
-Return your response as a JSON object with this exact structure:
+Return your response as a JSON object with EXACTLY this structure (do not add any other modes):
 {{
     "productivity": ["App1", "App2", ...],
     "creativity": ["App1", "App3", ...],
-    "social": ["App1", "App2", ...]
+    "social_media_detox": ["App1", "App2", ...]
 }}
+
+IMPORTANT: Return ONLY these three modes exactly as shown. Do not create additional categories or modes.
 
 Be thoughtful about categorization:
 - Productivity: Development tools, office apps, note-taking, project management, utilities
 - Creativity: Design software, media editing, music production, writing tools
 - Social media detox: Everything except social media apps, games, entertainment streaming
 
-Only include apps that clearly belong in each category. When in doubt, be conservative. Apps may belong in more than one category."""
+Be sure to consider apps that may fit multiple categories such as browsers, note-taking apps, and utilities."""
 
             response = self.client.chat.completions.create(
                 messages=[
@@ -202,13 +270,15 @@ Only include apps that clearly belong in each category. When in doubt, be conser
             return {}
         
         try:
-            prompt = """Create website blocking lists for focus modes. Return ONLY valid JSON with these domains to block:
+            prompt = """Create website blocking lists for focus modes. Return ONLY valid JSON with EXACTLY these three modes:
 
 {
     "productivity": ["facebook.com", "twitter.com", "instagram.com", "tiktok.com", "reddit.com", "youtube.com", "netflix.com", "twitch.tv", "discord.com"],
     "creativity": ["facebook.com", "twitter.com", "instagram.com", "tiktok.com", "reddit.com", "twitch.tv", "discord.com"],
-    "social": ["facebook.com", "twitter.com", "instagram.com", "tiktok.com", "reddit.com", "youtube.com", "netflix.com", "twitch.tv", "discord.com", "steam.com", "amazon.com"]
+    "social_media_detox": ["facebook.com", "twitter.com", "instagram.com", "tiktok.com", "reddit.com", "youtube.com", "netflix.com", "twitch.tv", "discord.com", "steam.com", "amazon.com"]
 }
+
+IMPORTANT: Return EXACTLY these three modes: "productivity", "creativity", "social_media_detox". Do not add additional modes.
 
 Add more relevant blocking domains for each mode. Keep response under 1500 tokens."""
 

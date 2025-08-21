@@ -1,0 +1,13 @@
+{
+  "ha_url": "http://homeassistant.local:8123",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI1ODdlNjFhMTVmN2Y0YzcyYTVlYzliNmE4ZjE3MjBjOCIsImlhdCI6MTc1NTc5MzI4MywiZXhwIjoyMDcxMTUzMjgzfQ.hQbPitsMISg7RijuiWcaAGrFkmATZ6uPLm2TbSTKMlM",
+  "enabled": true,
+  "scenes": {
+    "productivity": "scene.productivity",
+    "creativity": "scene.creativity",
+    "social_media_detox": "scene.smdetox",
+    "default": "scene.default"
+  },
+  "timeout": 10,
+  "verify_ssl": true
+}

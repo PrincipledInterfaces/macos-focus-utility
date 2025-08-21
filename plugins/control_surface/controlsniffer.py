@@ -217,10 +217,10 @@ def button_3_action():
     if is_session_actually_running():
         print("DEBUG: Active session detected, ending current session")
         end_session_event()
-        set_queued_mode("social")
+        set_queued_mode("social_media_detox")
     else:
-        print("DEBUG: No active session, starting social mode")
-        start_mode("social")
+        print("DEBUG: No active session, starting social media detox mode")
+        start_mode("social_media_detox")
 
 # Main loop with continuous scanning and reconnection
 print(" Control Surface Monitor starting...")

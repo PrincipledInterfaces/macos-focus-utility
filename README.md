@@ -39,7 +39,7 @@ Skip the mode selector but keep other GUI dialogs:
 python3 focusmode.py productivity
 
 # Specify mode with goals - shows duration picker
-python3 focusmode.py social --goals "Check emails;Quick review"
+python3 focusmode.py social_media_detox --goals "Check emails;Quick review"
 
 # Specify mode and duration - shows goals dialog  
 python3 focusmode.py deep 90
@@ -50,7 +50,7 @@ Skip all GUI dialogs (requires all parameters):
 
 ```bash
 # Fully automated session
-python3 focusmode.py social 60 --no-gui
+python3 focusmode.py social_media_detox 60 --no-gui
 
 # With specific goals
 python3 focusmode.py productivity 90 --goals "Code review;Bug fixes" --no-gui
@@ -69,7 +69,7 @@ python3 focusmode.py productivity 60 --no-website-blocking
 python3 focusmode.py --list
 
 # Check mode status and details
-python3 focusmode.py --status social
+python3 focusmode.py --status social_media_detox
 
 # Deactivate any active focus mode
 python3 focusmode.py --deactivate
@@ -162,11 +162,11 @@ focus-utility/
 ├── modes/                    # Focus mode definitions
 │   ├── productivity.txt      # Productivity mode app list
 │   ├── creativity.txt        # Creativity mode app list
-│   └── social.txt           # Social media detox mode app list
+│   └── social_media_detox.txt           # Social media detox mode app list
 ├── hosts/                    # Website blocking configurations
 │   ├── productivity_hosts    # Productivity mode website blocks
 │   ├── creativity_hosts      # Creativity mode website blocks
-│   └── social_hosts         # Social media detox website blocks
+│   └── social_media_detox_hosts         # Social media detox website blocks
 ├── plugins/                  # Plugin directory
 │   ├── email_assistant/      # Email integration plugin
 │   ├── positive_feedback/    # Encouragement plugin
@@ -200,7 +200,7 @@ python3 focusmode.py productivity 90 --goals "Finish quarterly report;Review tea
 ### Social Media Detox
 ```bash
 # 30-minute social media detox with comprehensive blocking
-python3 focusmode.py social 30 --no-gui
+python3 focusmode.py social_media_detox 30 --no-gui
 ```
 
 ### Creative Deep Work

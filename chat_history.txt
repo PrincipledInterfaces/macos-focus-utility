@@ -1,2 +1,0 @@
-user: can you add b to the checklist
-assistant: SYSINFPULL: add_todo:b

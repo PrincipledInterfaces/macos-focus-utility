@@ -1,0 +1,8 @@
+{
+  "name": "WiFi LED Lamp",
+  "version": "1.0.0",
+  "description": "Controls WiFi-connected ARGB LED lamp for focus mode lighting",
+  "main_file": "plugin.py",
+  "author": "Focus Utility",
+  "permissions": ["network"]
+}

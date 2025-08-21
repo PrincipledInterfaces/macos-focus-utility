@@ -1183,14 +1183,15 @@ class FinalGoalsDialog(QDialog):
         self.move(qr.topLeft())
 
 class ProgressPopup(QWidget):
-    def __init__(self, session_duration, goals, popup_interval=1, parent_launcher=None):
+    def __init__(self, session_duration, goals, popup_interval=1, parent_launcher=None, mode=None):
         super().__init__()
         self.session_duration = session_duration  # in minutes
         self.goals = goals
         self.popup_interval = popup_interval  # in minutes
         self.parent_launcher = parent_launcher  # Reference to FocusLauncher
+        self.mode = mode  # Focus mode for this session
         self.ai_notification_sent = False  # Flag to send AI notification only once
-        print(f"DEBUG: ProgressPopup initialized with interval: {popup_interval} minutes")
+        print(f"DEBUG: ProgressPopup initialized with interval: {popup_interval} minutes, mode: {mode}")
         self.start_time = datetime.now()
         self.completed_goals = set()
         self.app_usage = {}
@@ -1622,6 +1623,7 @@ class ProgressPopup(QWidget):
         try:
             from plugin_system import plugin_manager
             session_data = {
+                'mode': self.mode,
                 'duration': self.session_duration,
                 'goals': self.goals,
                 'start_time': self.start_time
@@ -1722,6 +1724,20 @@ class ProgressPopup(QWidget):
                 
                 def cleanup(self):
                     pass
+                
+                def add_checklist_item(self, item_text: str) -> bool:
+                    """Add a new item to the checklist. Direct implementation."""
+                    print(f"DEBUG: SessionPlugin.add_checklist_item called with: '{item_text}'")
+                    if self._progress_popup and hasattr(self._progress_popup, 'add_checklist_item'):
+                        result = self._progress_popup.add_checklist_item(item_text)
+                        print(f"DEBUG: SessionPlugin.add_checklist_item result: {result}")
+                        return result
+                    else:
+                        print(f"DEBUG: SessionPlugin.add_checklist_item failed - no _progress_popup or method")
+                        print(f"DEBUG: _progress_popup is: {self._progress_popup}")
+                        if self._progress_popup:
+                            print(f"DEBUG: has add_checklist_item method: {hasattr(self._progress_popup, 'add_checklist_item')}")
+                        return False
             
             self.ai_service = GeminiService()
             self.ai_plugin = SessionPlugin(self)
@@ -2127,6 +2143,7 @@ class ProgressPopup(QWidget):
         try:
             from plugin_system import plugin_manager
             session_data = {
+                'mode': self.mode,
                 'duration': actual_duration,
                 'planned_duration': self.session_duration,
                 'goals': self.goals,
@@ -2189,6 +2206,7 @@ class ProgressPopup(QWidget):
         try:
             from plugin_system import plugin_manager
             session_data = {
+                'mode': self.mode,
                 'duration': actual_duration,
                 'planned_duration': self.session_duration,
                 'goals': self.goals,
@@ -2291,10 +2309,10 @@ class SessionSummary(QWidget):
         
         # Remove distracting animations for cleaner look
         
-        # Clean main layout with optimal spacing
+        # Clean main layout with compact spacing for more content area
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(60, 60, 60, 60)
-        main_layout.setSpacing(48)
+        main_layout.setContentsMargins(40, 30, 40, 40)
+        main_layout.setSpacing(20)
         
         # Modern header with subtle glow
         title_text = self.get_encouraging_title()
@@ -2305,7 +2323,7 @@ class SessionSummary(QWidget):
             font-size: 48px;
             font-weight: 600;
             letter-spacing: -0.8px;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             background: transparent;
             border: none;
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
@@ -2650,6 +2668,22 @@ class SessionSummary(QWidget):
             stats_layout.addWidget(websites_container)
         
         scroll.setWidget(stats_widget)
+        
+        # Add scroll indicator hint
+        scroll_hint = QLabel("↓ Scroll down to see detailed stats ↓")
+        scroll_hint.setAlignment(Qt.AlignCenter)
+        scroll_hint.setStyleSheet("""
+            color: #007aff;
+            font-size: 14px;
+            font-weight: 500;
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(0, 122, 255, 0.1);
+            border-radius: 12px;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+        """)
+        main_layout.addWidget(scroll_hint)
+        
         main_layout.addWidget(scroll)
         
         # Glass morphism continue button
@@ -3010,13 +3044,81 @@ class ClickableLabel(QLabel):
                 self.setText(self.full_text)
                 self.expanded = True
 
+class CountdownManager:
+    def __init__(self, mode, app):
+        self.mode = mode
+        self.app = app
+        self.countdown_windows = []
+        self.countdown_finished = False
+        self.create_countdown_windows()
+    
+    def create_countdown_windows(self):
+        """Create countdown windows for all connected displays"""
+        from PyQt5.QtWidgets import QDesktopWidget
+        desktop = QDesktopWidget()
+        
+        # Create a countdown window for each screen
+        for i in range(desktop.screenCount()):
+            screen = desktop.screenGeometry(i)
+            window = CountdownWindow(self.mode, screen, self)  # Pass manager reference
+            self.countdown_windows.append(window)
+    
+    def on_window_finished(self):
+        """Called when any countdown window finishes"""
+        self.countdown_finished = True
+        # Close all other windows
+        self.close()
+    
+    def on_window_escaped(self):
+        """Called when user presses Escape on any window"""
+        self.countdown_finished = True
+        # Close all windows
+        self.close()
+        # Exit the application
+        import sys
+        sys.exit(0)
+    
+    def show(self):
+        """Show all countdown windows"""
+        for window in self.countdown_windows:
+            window.show()
+    
+    def close(self):
+        """Close all countdown windows"""
+        for window in self.countdown_windows:
+            window.close()
+        self.countdown_windows.clear()
+    
+    def isVisible(self):
+        """Check if any countdown window is visible"""
+        return any(window.isVisible() for window in self.countdown_windows)
+    
+    def isFullScreen(self):
+        """Check if any countdown window is fullscreen"""
+        return any(window.isFullScreen() for window in self.countdown_windows)
+    
+    def showNormal(self):
+        """Show all windows in normal mode (exit fullscreen)"""
+        for window in self.countdown_windows:
+            if window.isFullScreen():
+                window.showNormal()
+    
+    def check_countdown_finished(self):
+        """Check if countdown is finished on any window"""
+        if self.countdown_windows:
+            # All windows share the same countdown, so check the first one
+            self.countdown_finished = self.countdown_windows[0].countdown_finished
+        return self.countdown_finished
+
 class CountdownWindow(QWidget):
-    def __init__(self, mode):
+    def __init__(self, mode, screen=None, manager=None):
         super().__init__()
         self.mode = mode
         self.countdown = get_breath_duration_setting()
         self.allowed_apps = self.get_allowed_apps(mode)
         self.countdown_finished = False
+        self.screen = screen  # Specific screen to show on
+        self.manager = manager  # Reference to CountdownManager
         self.init_ui()
         self.start_countdown()
     
@@ -3035,6 +3137,11 @@ class CountdownWindow(QWidget):
         self.setWindowIcon(get_app_icon())
         # Make fullscreen and remove window decorations
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
+        
+        # If a specific screen is provided, position on that screen
+        if self.screen:
+            self.setGeometry(self.screen)
+        
         self.showFullScreen()
         
         # Black background
@@ -3176,21 +3283,28 @@ class CountdownWindow(QWidget):
             self.timer.stop()
             self.breathing_circle.animation_timer.stop()
             self.countdown_finished = True
-            self.close()
+            if self.manager:
+                self.manager.on_window_finished()
+            else:
+                self.close()
     
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
             self.timer.stop()
             self.breathing_circle.animation_timer.stop()
             self.countdown_finished = True
-            self.close()
-            sys.exit(0)
+            if self.manager:
+                self.manager.on_window_escaped()
+            else:
+                self.close()
+                import sys
+                sys.exit(0)
 
 class FocusSelector(QWidget):
     def __init__(self):
         super().__init__()
         self.selected_mode = None
-        self.modes = ['productivity', 'creativity', 'social']
+        self.modes = ['productivity', 'creativity', 'social_media_detox']
         self.custom_modes = self._discover_custom_modes()
         self.init_ui()
     
@@ -3303,7 +3417,7 @@ class FocusSelector(QWidget):
         self.mode_combo.addItem("Select a mode...")
         self.mode_combo.addItem("Productivity - Work and focus apps only")
         self.mode_combo.addItem("Creativity - Design and creative tools")
-        self.mode_combo.addItem("Social - Communication and collaboration")
+        self.mode_combo.addItem("Social Media Detox - Digital wellness and deep focus")
         
         # Add custom modes if any exist
         if self.custom_modes:
@@ -3511,7 +3625,7 @@ class FocusSelector(QWidget):
         self.mode_combo.addItem("Select a mode...")
         self.mode_combo.addItem("Productivity - Work and focus apps only")
         self.mode_combo.addItem("Creativity - Design and creative tools")
-        self.mode_combo.addItem("Social - Communication and collaboration")
+        self.mode_combo.addItem("Social Media Detox - Digital wellness and deep focus")
         
         # Add custom modes if any exist
         if self.custom_modes:
@@ -3679,21 +3793,25 @@ class FocusLauncher:
                 
                 final_goals = plugin_scan.final_goals
         
-        # Show countdown
-        countdown = CountdownWindow(selector.selected_mode)
+        # Show countdown on all displays
+        countdown = CountdownManager(selector.selected_mode, self.app)
         countdown.show()
         
         # Wait for countdown to finish using a timer-based approach
         from PyQt5.QtCore import QTimer
         wait_timer = QTimer()
-        wait_timer.timeout.connect(lambda: self.check_countdown_finished(countdown, wait_timer))
+        wait_timer.timeout.connect(lambda: self.check_countdown_finished_multi(countdown, wait_timer))
         wait_timer.start(100)  # Check every 100ms
         
         # Process events while waiting
-        while not countdown.countdown_finished:
+        while not countdown.check_countdown_finished():
             self.app.processEvents()
             if not countdown.isVisible():
                 break
+        
+        # Exit fullscreen after breathing countdown finishes
+        if countdown.isFullScreen():
+            countdown.showNormal()
         
         # Launch focus mode
         self.launch_focus_mode(selector.selected_mode)
@@ -3701,7 +3819,7 @@ class FocusLauncher:
         # Start progress tracking with final goals
         popup_interval = get_popup_interval_setting()
         print(f"DEBUG: Using popup interval: {popup_interval} minutes")
-        self.progress_popup = ProgressPopup(session_duration, final_goals, popup_interval=popup_interval, parent_launcher=self)
+        self.progress_popup = ProgressPopup(session_duration, final_goals, popup_interval=popup_interval, parent_launcher=self, mode=selector.selected_mode)
         
         # Note: AI notification will be sent when user dismisses first progress popup
         
@@ -3718,6 +3836,11 @@ class FocusLauncher:
     def check_countdown_finished(self, countdown, timer):
         """Helper method to check if countdown is finished"""
         if countdown.countdown_finished or not countdown.isVisible():
+            timer.stop()
+    
+    def check_countdown_finished_multi(self, countdown, timer):
+        """Helper method to check if multi-display countdown is finished"""
+        if countdown.check_countdown_finished() or not countdown.isVisible():
             timer.stop()
     
     def launch_focus_mode(self, mode):
@@ -4083,7 +4206,20 @@ class AIAssistantWindow(QWidget):
         # Get AI response
         try:
             from agent import chat
-            response = chat(self.ai_service, user_input, self.ai_plugin)
+            response, commands_used = chat(self.ai_service, user_input, self.ai_plugin)
+            
+            # Check for empty response and retry up to 3 times
+            retry_count = 0
+            max_retries = 3
+            while (not response or response.strip() == "") and retry_count < max_retries:
+                retry_count += 1
+                print(f"DEBUG: Empty AI response, retrying ({retry_count}/{max_retries})")
+                response, commands_used = chat(self.ai_service, user_input, self.ai_plugin)
+            
+            # If still empty after retries, provide fallback message
+            if not response or response.strip() == "":
+                response = "Sorry, I'm having trouble responding right now. Please try rephrasing your question."
+            
             self.add_message("AI", response)
         except Exception as e:
             self.add_message("AI", f"Sorry, I encountered an error: {e}")

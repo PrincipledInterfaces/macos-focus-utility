@@ -343,7 +343,7 @@ def on_session_start(self, session_data: Dict[str, Any]):
     
     Args:
         session_data: Dictionary containing session information
-            - mode: str - Focus mode (productivity/creativity/social)
+            - mode: str - Focus mode (productivity/creativity/social_media_detox)
             - duration_minutes: int - Session duration
             - goals: List[str] - Final goals list
             - start_time: datetime - Session start time

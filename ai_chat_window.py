@@ -30,15 +30,23 @@ class AIWorkerThread(QThread):
             from agent import chat
             response, commands_used = chat(self.ai_service, self.user_input, self.ai_plugin)
             
+            # Check for empty response and retry up to 3 times
+            retry_count = 0
+            max_retries = 3
+            while (not response or response.strip() == "") and retry_count < max_retries:
+                retry_count += 1
+                print(f"DEBUG: Empty AI response, retrying ({retry_count}/{max_retries})")
+                response, commands_used = chat(self.ai_service, self.user_input, self.ai_plugin)
+            
             # Stop timeout timer
             timeout_timer.stop()
             
             if not self._response_received:
                 self._response_received = True
                 
-                # Check for empty response
+                # Check for empty response after retries
                 if not response or response.strip() == "":
-                    self.error_occurred.emit("AI returned an empty response. Please try again.")
+                    self.error_occurred.emit("AI returned empty responses after multiple attempts. Please try again.")
                 else:
                     # Emit success signal
                     self.response_ready.emit(response, commands_used)

@@ -1,7 +1,9 @@
 {
-  "enabled_plugins": [],
+  "enabled_plugins": [
+    "home_assistant"
+  ],
   "app_settings": {
-    "popup_interval_minutes": 15,
-    "breath_duration_seconds": 5
+    "popup_interval_minutes": 1,
+    "breath_duration_seconds": 15
   }
 }

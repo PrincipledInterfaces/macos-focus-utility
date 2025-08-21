@@ -18,10 +18,11 @@ from agent_timer import set_timer
 SYSTEM_PROMPT = "You are a helpful assistant for a focus app. Keep responses SHORT and casual like text messages (1-2 sentences max). " \
 "Don't give long advice unless specifically asked. Be direct and helpful, not wordy." \
 "You have access to many system features such as the installed and currently running applications, " \
-"the user's todo list," \
-" and other system information. " \
+"the user's todo list, and other system information. " \
 "You can also remember facts about the user to provide better assistance in the future. " \
 "You should always respond in a helpful and friendly manner, and never provide harmful or dangerous advice." \
+"IMPORTANT: You can help with brainstorming, giving advice, suggesting ideas, and general conversation. " \
+"Don't limit yourself to just system commands - be a helpful assistant in all ways!" \
 "If you feel that your response needs any of the system features, reply to the request with the following format:\n" \
 "Begin your response with exactly 'SYSINFPULL:' followed by one or more of the following commands:\n" \
 "  - 'installed_apps' to get a list of installed applications\n" \
@@ -48,11 +49,19 @@ SYSTEM_PROMPT = "You are a helpful assistant for a focus app. Keep responses SHO
 "7. Be proactive about suggesting, closing and opening relevant apps, but ask for permission first\n" \
 "8. Only claim capabilities you actually have through the SYSINFPULL commands\n" \
 "9. NEVER use generic app names like 'writing app' - always check installed_apps to get the exact app name\n" \
-"10. When opening apps, use the EXACT name from the installed_apps list\n\n" \
+"10. When opening apps, use the EXACT name from the installed_apps list\n" \
+"11. ALWAYS check todo_list when user asks about what to work on, what's next, or needs advice\n" \
+"12. Be proactive - if someone says 'you can see the list' or similar, immediately check it\n\n" \
 "For informational commands (installed_apps, running_apps, todo_list, todo_completed, session_length, session_time):\n" \
-"- Use them proactively at the START of your response when the user asks about progress, productivity, apps, or session info\n" \
-"- Common triggers: 'how am I doing', 'my progress', 'what apps', 'time left', 'my todos'\n" \
+"- ALWAYS use them proactively at the START of your response when they would help provide better assistance\n" \
+"- Common triggers: 'how am I doing', 'my progress', 'what apps', 'time left', 'my todos', 'what's next', 'you can see', 'help me', 'advice', 'get started'\n" \
+"- When in doubt, CHECK THE TODO LIST, APPS, AND OTHER INFO - it helps you give much better, more specific advice\n" \
 "- Then provide a complete conversational response based on that information\n\n" \
+"IMPORTANT: When user asks to ADD/CREATE new todos, use 'add_todo:<task>' NOT 'todo_list'!\n" \
+"- 'add this to my todos' → use add_todo:<task>\n" \
+"- 'create a todo for X' → use add_todo:<task>\n" \
+"- 'remind me to do Y' → use add_todo:<task>\n" \
+"- Only use 'todo_list' when user wants to SEE/CHECK existing todos\n\n" \
 "If apps are open that don't appear to be relevant to the todos or session, or are seemingly unused, you can suggest closing them.\n" \
 "For action commands (add_todo, remove_todo, clear_todo, open_app, close_app):\n" \
 "1. ALWAYS check installed_apps first to see what apps are available\n" \
@@ -61,8 +70,8 @@ SYSTEM_PROMPT = "You are a helpful assistant for a focus app. Keep responses SHO
 "4. Then execute the command by responding with ONLY 'SYSINFPULL: command' (no other text)\n" \
 "5. Use the exact app name from installed_apps, not generic names\n\n" \
 "When opening/closing apps, check installed_apps first to verify the app exists, then ask for permission.\n" \
-"Your abilities are limited to the system features provided.\n" \
-"YOU CANNOT: remember things across sessions, or perform any actions outside the SYSINFPULL commands.\n" \
+"You have many system features available through SYSINFPULL commands, but you can also help with general conversation, brainstorming, advice, and ideas.\n" \
+"YOU CANNOT: remember things across sessions, or perform system actions outside the SYSINFPULL commands.\n" \
 "when the user shows desire to work on a specific thing, you can ask to close apps or websites that seem unrelated to that task.\n" \
 "Opening websites relevant to the user's work or tasks is great."
 
@@ -127,20 +136,63 @@ def load_memory():
     return ""
 
 def get_running_apps():
-    """Get list of currently running applications"""
+    """Get list of currently running user-facing applications"""
     try:
-        result = subprocess.run(['ps', '-eo', 'comm'], capture_output=True, text=True)
-        apps = []
+        # Use ps with args to get full command paths for better filtering
+        result = subprocess.run(['ps', '-eo', 'comm,args'], capture_output=True, text=True)
+        apps = set()
+        
         for line in result.stdout.split('\n'):
             if line.strip() and not line.startswith('COMMAND'):
-                app = line.strip()
-                if '/' in app:
-                    app = app.split('/')[-1]
-                if app.endswith('.app'):
-                    app = app[:-4]
-                if app and app not in apps and not app.startswith('['):
-                    apps.append(app)
-        return sorted(list(set(apps)))
+                parts = line.strip().split(None, 1)
+                if len(parts) >= 1:
+                    comm = parts[0]
+                    args = parts[1] if len(parts) > 1 else ""
+                    
+                    # Look for actual .app bundles in the command path
+                    if '.app/Contents/MacOS/' in comm:
+                        # Skip if it's an extension (.appex) or other non-main executable
+                        if '.appex/' in comm or '/Extensions/' in comm or '/XPCServices/' in comm:
+                            continue
+                            
+                        # Extract app name from path like /Applications/AppName.app/Contents/MacOS/AppName
+                        app_path = comm.split('.app/Contents/MacOS/')[0] + '.app'
+                        app_name = app_path.split('/')[-1].replace('.app', '')
+                        
+                        # Additional check: make sure the executable name matches the app name
+                        # This ensures we're getting the main app executable, not a helper
+                        executable_name = comm.split('/')[-1]
+                        if executable_name != app_name and not executable_name.startswith(app_name):
+                            continue
+                        
+                        # Filter out obvious background processes and system utilities
+                        if not any(skip in app_name.lower() for skip in [
+                            'agent', 'helper', 'service', 'daemon', 'sync', 'extension',
+                            'background', 'launcher', 'processor', 'monitor', 'updater',
+                            'notification', 'widget', 'plugin', 'framework', 'crashreporter',
+                            'diagnostics', 'configuration', 'subscriber', 'broker'
+                        ]):
+                            apps.add(app_name)
+                    
+                    # Also check if it's a direct app launch (like /Applications/AppName.app)
+                    elif '.app' in args and '/Applications/' in args:
+                        # Skip if this is an extension or helper process
+                        if '.appex/' in args or '/Extensions/' in args or '/XPCServices/' in args:
+                            continue
+                            
+                        import re
+                        app_match = re.search(r'/Applications/([^/]+\.app)', args)
+                        if app_match:
+                            app_name = app_match.group(1).replace('.app', '')
+                            if not any(skip in app_name.lower() for skip in [
+                                'agent', 'helper', 'service', 'daemon', 'sync', 'extension',
+                                'background', 'launcher', 'processor', 'monitor', 'updater',
+                                'notification', 'widget', 'plugin', 'framework', 'crashreporter',
+                                'diagnostics', 'configuration', 'subscriber', 'broker'
+                            ]):
+                                apps.add(app_name)
+        
+        return sorted(list(apps))
     except Exception as e:
         print(f"Error getting running apps: {e}")
         return []
@@ -155,6 +207,9 @@ def add_todo_item(task, plugin_var):
     """Add a task to the todo list"""
     print(f"DEBUG: add_todo_item called with task='{task}', plugin_var type={type(plugin_var)}")
     print(f"DEBUG: plugin_var has add_checklist_item: {hasattr(plugin_var, 'add_checklist_item')}")
+    print(f"DEBUG: plugin_var has _progress_popup: {hasattr(plugin_var, '_progress_popup')}")
+    if hasattr(plugin_var, '_progress_popup'):
+        print(f"DEBUG: _progress_popup is: {plugin_var._progress_popup}")
     
     if hasattr(plugin_var, 'add_checklist_item'):
         # Use the proper plugin API method
@@ -165,9 +220,9 @@ def add_todo_item(task, plugin_var):
             formatted_task = task if task.startswith('•') else f"• {task}"
             return f"Added new todo: {formatted_task}"
         else:
-            return "Failed to add todo item"
+            return "Failed to add todo item - check if focus session is active"
     
-    return "Unable to add todo - no active focus session"
+    return "Unable to add todo - no active focus session or missing add_checklist_item method"
 
 def complete_todo_item(task, plugin_var):
     """Mark a todo item as completed with improved matching"""
@@ -293,8 +348,12 @@ def chat(ai, user_input, plugin_var):
                 commands_used.append("checked session length")
             elif cmd.startswith("add_todo:"):
                 task = cmd.split("add_todo:")[1].strip()
-                info["add_todo"] = add_todo_item(task, plugin_var)
-                commands_used.append(f"tried to add todo")
+                result = add_todo_item(task, plugin_var)
+                info["add_todo"] = result
+                if "Added new todo:" in result:
+                    commands_used.append(f"successfully added todo '{task}'")
+                else:
+                    commands_used.append(f"failed to add todo '{task}' - {result}")
             elif cmd.startswith("remove_todo:"):
                 task = cmd.split("remove_todo:")[1].strip()
                 success = complete_todo_item(task, plugin_var)
@@ -377,14 +436,19 @@ def chat(ai, user_input, plugin_var):
                     commands_used.append("failed to set reminder - invalid format")
         
         # Create a new prompt with the gathered info and get final response
-        info_prompt = f"The user asked: '{user_input}'\n\nI executed these system commands:\n"
+        info_prompt = f"The user asked: '{user_input}'\n\nI executed these system commands and got these results:\n"
         for key, value in info.items():
-            info_prompt += f"{key}: {value}\n"
-        info_prompt += "\nNow provide a SHORT, friendly response to the user confirming what was done. Do NOT use any SYSINFPULL commands in your response."
+            info_prompt += f"- {key}: {value}\n"
+        info_prompt += "\nNow provide a SHORT, casual response (like a text message) confirming what was done. Be friendly and conversational. NEVER use SYSINFPULL commands in your response - just tell the user what happened in plain English."
         
         # Get final response with the system info (no recursion)
         ai_response = ai.ask(info_prompt, system_prompt=system_prompt, conversation_history=history)
         print(f"DEBUG: Final AI response after SYSINFPULL: '{ai_response}'")
+        
+        # If AI still responds with SYSINFPULL, provide a fallback
+        if "SYSINFPULL:" in ai_response:
+            print("DEBUG: AI responded with SYSINFPULL again, using fallback")
+            ai_response = "Done! Let me know if you need anything else."
 
     # Save both messages only once
     save_message("user", user_input)

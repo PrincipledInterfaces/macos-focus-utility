@@ -117,6 +117,10 @@ class GeminiService:
                                 return candidate['content']['parts'][0]['text'].strip()
                             else:
                                 print("Unexpected Gemini response format")
+                                # DEBUG: print(f"Candidate data: {candidate}")
+                                # Check if it's a MAX_TOKENS issue
+                                if candidate.get('finishReason') == 'MAX_TOKENS':
+                                    print("Response was truncated due to token limit")
                                 return ""
                         else:
                             print("No candidates in Gemini response")
@@ -194,6 +198,284 @@ class GeminiService:
         # Remove system apps and return unique apps
         user_apps = [app for app in set(apps) if app not in system_apps]
         return sorted(user_apps)
+    
+    def categorize_apps_for_modes(self, apps: List[str]) -> Dict[str, List[str]]:
+        """Categorize applications for focus modes using Gemini AI with batching"""
+        if not self.is_available():
+            print("Gemini AI service not available")
+            return {}
+        
+        # Process apps in smaller batches to avoid prompt length limits
+        batch_size = 5  # Process 5 apps at a time to avoid token limits
+        all_results = {'productivity': [], 'creativity': [], 'social_media_detox': []}
+        
+        try:
+            import re
+            import json
+            
+            # Process apps in batches
+            for i in range(0, len(apps), batch_size):
+                batch_apps = apps[i:i + batch_size]
+                apps_text = '\n'.join(batch_apps)
+                
+                prompt = f"""Return JSON with these exact keys:
+{{"productivity": [], "creativity": [], "social_media_detox": []}}
+
+Categorize these apps into focus modes. Apps can appear in MULTIPLE categories:
+{apps_text}
+
+IMPORTANT: Many apps should appear in multiple categories.
+
+PRODUCTIVITY mode (work, business, coding):
+- Browsers (Chrome, Safari, Firefox, Edge) - essential for research, documentation
+- Code editors, IDEs, terminals
+- Office apps (Word, Excel, PowerPoint, Pages, Numbers)
+- Communication tools for work (Slack, Teams, Zoom, email clients)
+- File managers, utilities, system tools
+- Note-taking apps (Notion, Obsidian, Bear)
+- Project management tools
+- PDF readers, text editors
+
+CREATIVITY mode (creative work, design, content creation):
+- Browsers (Chrome, Safari, Firefox) - for inspiration, tutorials, uploading work
+- Design tools (Photoshop, Illustrator, Figma, Sketch)
+- Video/audio editing (Final Cut, Premiere, Logic, Audacity)
+- 3D modeling, animation tools
+- Writing apps, text editors for creative writing
+- Music production software
+- Photography apps
+- Drawing/illustration apps
+- Music streaming apps (Spotify, Apple Music) - for background music while creating
+- General text editors - useful for writing, scripting
+- File managers - organizing creative assets
+
+SOCIAL_MEDIA_DETOX mode (everything EXCEPT social media, games, entertainment):
+- Browsers (Chrome, Safari, Firefox) - for work/learning, NOT entertainment
+- ALL productivity apps
+- ALL creativity apps (art is not entertainment distraction)
+- System utilities, file managers
+- Educational apps, reference materials
+- EXCLUDE: Social media apps, games, streaming video, entertainment apps
+
+Think about real-world usage:
+- Someone doing creative work needs browsers for tutorials, references, uploading work
+- Creative people use music apps for background ambience while working
+- Text editors can be used for creative writing, not just coding
+- General-purpose apps often serve multiple functions
+- Consider indirect creative uses: Excel for planning projects, Notion for mood boards
+
+Apps that are NOT entertainment/distraction but could support creativity:
+- Music/audio apps (background music aids creativity)
+- Organization tools (project planning)
+- General productivity apps (research, documentation)
+
+Return only JSON."""
+
+                response = self.ask(prompt, max_tokens=2000)
+                print(f"Batch {i//batch_size + 1}: response length {len(response)}")
+                
+                if not response:
+                    print(f"Empty response for batch {i//batch_size + 1}")
+                    continue
+                
+                # Check if response was truncated
+                if len(response) >= 1950:  # Close to max_tokens limit
+                    print(f"Response was truncated for batch {i//batch_size + 1}")
+                    # Try with smaller batch size recursively
+                    if len(batch_apps) > 1:
+                        print(f"Retrying batch {i//batch_size + 1} with smaller batches...")
+                        for j in range(0, len(batch_apps), 2):  # Split into groups of 2
+                            mini_batch = batch_apps[j:j+2]
+                            mini_apps_text = '\n'.join(mini_batch)
+                            mini_prompt = f"""Return JSON with these exact keys:
+{{"productivity": [], "creativity": [], "social_media_detox": []}}
+
+Categorize these apps:
+{mini_apps_text}
+
+Rules:
+- productivity: work tools, coding, office, utilities
+- creativity: design, media editing, art, music
+- social_media_detox: ALL apps except social media/games/entertainment
+
+Return only JSON."""
+                            mini_response = self.ask(mini_prompt, max_tokens=1000)
+                            if mini_response and len(mini_response) < 950:
+                                # Process mini response using same logic below
+                                mini_json_str = None
+                                mini_json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', mini_response, re.DOTALL)
+                                if mini_json_match:
+                                    mini_json_str = mini_json_match.group(1)
+                                else:
+                                    start_idx = mini_response.find('{')
+                                    if start_idx != -1:
+                                        brace_count = 0
+                                        end_idx = start_idx
+                                        for k, char in enumerate(mini_response[start_idx:], start_idx):
+                                            if char == '{':
+                                                brace_count += 1
+                                            elif char == '}':
+                                                brace_count -= 1
+                                                if brace_count == 0:
+                                                    end_idx = k
+                                                    break
+                                        if brace_count == 0:
+                                            mini_json_str = mini_response[start_idx:end_idx + 1]
+                                
+                                if mini_json_str:
+                                    try:
+                                        mini_result = json.loads(mini_json_str)
+                                        if isinstance(mini_result, dict):
+                                            for mode in ['productivity', 'creativity', 'social_media_detox']:
+                                                apps_for_mode = mini_result.get(mode, [])
+                                                if isinstance(apps_for_mode, list):
+                                                    all_results[mode].extend(apps_for_mode)
+                                            print(f"Successfully processed mini-batch ({len(mini_batch)} apps)")
+                                    except:
+                                        pass
+                        continue  # Skip normal processing for truncated response
+                
+                # Extract and clean JSON from response
+                json_str = None
+                
+                # Try to find JSON in code blocks first
+                json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response, re.DOTALL)
+                if json_match:
+                    json_str = json_match.group(1)
+                else:
+                    # Look for bare JSON structure
+                    start_idx = response.find('{')
+                    if start_idx != -1:
+                        brace_count = 0
+                        end_idx = start_idx
+                        for j, char in enumerate(response[start_idx:], start_idx):
+                            if char == '{':
+                                brace_count += 1
+                            elif char == '}':
+                                brace_count -= 1
+                                if brace_count == 0:
+                                    end_idx = j
+                                    break
+                        if brace_count == 0:
+                            json_str = response[start_idx:end_idx + 1]
+                
+                if json_str:
+                    # Clean up JSON
+                    json_str = re.sub(r'"\s+[^",\]\}]+\s*([,\]\}])', r'"\1', json_str)
+                    json_str = re.sub(r',\s*([}\]])', r'\1', json_str)
+                    
+                    try:
+                        batch_result = json.loads(json_str)
+                        
+                        # Validate and merge results
+                        if isinstance(batch_result, dict):
+                            # Handle different possible key formats
+                            for mode in ['productivity', 'creativity', 'social_media_detox']:
+                                apps_for_mode = batch_result.get(mode, [])
+                                if isinstance(apps_for_mode, list):
+                                    all_results[mode].extend(apps_for_mode)
+                            print(f"Successfully processed batch {i//batch_size + 1} ({len(batch_apps)} apps)")
+                        else:
+                            print(f"Invalid JSON structure in batch {i//batch_size + 1}")
+                            
+                    except json.JSONDecodeError as e:
+                        print(f"JSON decode error in batch {i//batch_size + 1}: {e}")
+                        continue
+                else:
+                    print(f"No JSON found in batch {i//batch_size + 1} response")
+                    continue
+            
+            # Remove duplicates while preserving order
+            for mode in all_results:
+                all_results[mode] = list(dict.fromkeys(all_results[mode]))
+            
+            total_categorized = sum(len(apps) for apps in all_results.values())
+            print(f"Categorized {len(apps)} apps into {total_categorized} total assignments using Gemini")
+            return all_results
+                
+        except Exception as e:
+            print(f"Error categorizing apps with Gemini: {e}")
+            return {}
+    
+    def generate_website_blocks_for_modes(self) -> Dict[str, List[str]]:
+        """Generate comprehensive website blocks for each focus mode using Gemini AI"""
+        if not self.is_available():
+            print("Gemini AI service not available")
+            return {}
+        
+        try:
+            import re
+            import json
+            
+            prompt = """IMPORTANT: Respond with ONLY valid JSON. No explanations, no extra text.
+
+Return website blocking lists for focus modes:
+
+{
+    "productivity": ["facebook.com", "twitter.com", "instagram.com", "tiktok.com", "reddit.com", "youtube.com"],
+    "creativity": ["facebook.com", "twitter.com", "instagram.com", "tiktok.com", "reddit.com"],
+    "social_media_detox": ["facebook.com", "twitter.com", "instagram.com", "tiktok.com", "reddit.com", "youtube.com", "netflix.com", "steam.com"]
+}
+
+CRITICAL: Return ONLY valid JSON. No text before or after."""
+
+            response = self.ask(prompt, max_tokens=2000)
+            
+            # Extract and clean JSON from response (same robust method as apps)
+            # DEBUG: print(f"Raw website response length: {len(response)}")
+            
+            # Find the first valid JSON structure, ignoring any garbage before/after
+            json_str = None
+            
+            # Try to find JSON in code blocks first
+            json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(1)
+            else:
+                # Look for bare JSON structure - find the outermost braces
+                start_idx = response.find('{')
+                if start_idx != -1:
+                    brace_count = 0
+                    end_idx = start_idx
+                    for i, char in enumerate(response[start_idx:], start_idx):
+                        if char == '{':
+                            brace_count += 1
+                        elif char == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                end_idx = i
+                                break
+                    if brace_count == 0:
+                        json_str = response[start_idx:end_idx + 1]
+            
+            if json_str:
+                # Aggressive cleaning of corrupted JSON
+                json_str = re.sub(r'"\s+[^",\]\}]+\s*([,\]\}])', r'"\1', json_str)
+                json_str = re.sub(r',\s*([}\]])', r'\1', json_str)
+                
+                # DEBUG: print(f"Website JSON extracted: {json_str[:200]}...")
+                
+                try:
+                    result = json.loads(json_str)
+                    # Validate structure
+                    if isinstance(result, dict) and all(key in ['productivity', 'creativity', 'social_media_detox'] for key in result.keys()):
+                        print(f"Generated website blocks for focus modes using Gemini")
+                        return result
+                    else:
+                        print("Invalid website JSON structure returned by Gemini")
+                        return {}
+                except json.JSONDecodeError as e:
+                    print(f"Website JSON decode error: {e}")
+                    print(f"Failed website JSON: {json_str[:300]}...")
+                    return {}
+            else:
+                print("No JSON structure found in website response")
+                print(f"Website response preview: {response[:300]}...")
+                return {}
+                
+        except Exception as e:
+            print(f"Error generating website blocks with Gemini: {e}")
+            return {}
 
 
 # Convenience function for easy importing

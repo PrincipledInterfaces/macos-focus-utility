@@ -382,10 +382,26 @@ class PluginSettingsDialog(QMainWindow):
             header_layout.addWidget(version_label)
             header_layout.addStretch()
             
-            # Add configure button for email plugin
+            # Add configure button for plugins that support it
             if plugin_id == 'email_assistant':
                 config_btn = QPushButton("Configure Email")
                 config_btn.clicked.connect(lambda: self.configure_email_plugin(plugin_id))
+                config_btn.setStyleSheet("""
+                    QPushButton {
+                        padding: 6px 12px;
+                        font-size: 12px;
+                        font-weight: 500;
+                        border: 1px solid #007aff;
+                        border-radius: 6px;
+                        background-color: white;
+                        color: #007aff;
+                    }
+                    QPushButton:hover { background-color: #f0f8ff; }
+                """)
+                header_layout.addWidget(config_btn)
+            elif plugin_id == 'home_assistant':
+                config_btn = QPushButton("Configure")
+                config_btn.clicked.connect(lambda _, pid=plugin_id: self.configure_home_assistant_plugin(pid))
                 config_btn.setStyleSheet("""
                     QPushButton {
                         padding: 6px 12px;
@@ -426,6 +442,63 @@ class PluginSettingsDialog(QMainWindow):
             
             self.plugins_layout.addWidget(plugin_frame)
             self.plugin_checkboxes[plugin_id] = checkbox
+    
+    def configure_home_assistant_plugin(self, plugin_id):
+        """Configure the Home Assistant plugin"""
+        print(f"DEBUG: configure_home_assistant_plugin called with plugin_id: '{plugin_id}'")
+        try:
+            # Enable plugin first if not enabled
+            if not plugin_manager.is_plugin_enabled(plugin_id):
+                plugin_manager.enable_plugin(plugin_id)
+                # Update checkbox state
+                if plugin_id in self.plugin_checkboxes:
+                    self.plugin_checkboxes[plugin_id].setChecked(True)
+            
+            # Get the plugin instance and call its configure method
+            if plugin_id in plugin_manager.loaded_plugins:
+                plugin_instance = plugin_manager.loaded_plugins[plugin_id]
+                print(f"DEBUG: Got plugin instance for '{plugin_id}': {type(plugin_instance)} from {plugin_instance.__module__ if hasattr(plugin_instance, '__module__') else 'unknown'}")
+                print(f"DEBUG: Plugin class name: {plugin_instance.__class__.__name__}")
+                
+                # Check if configure method exists, if not, reload the plugin
+                if not hasattr(plugin_instance, 'configure'):
+                    print("Plugin missing configure method, attempting reload...")
+                    print(f"Available methods: {[method for method in dir(plugin_instance) if not method.startswith('_')]}")
+                    
+                    # Force reload the plugin by removing it from loaded_plugins and clearing Python's module cache
+                    if plugin_id in plugin_manager.loaded_plugins:
+                        plugin_manager.loaded_plugins[plugin_id].cleanup()
+                        del plugin_manager.loaded_plugins[plugin_id]
+                    
+                    # Clear Python's module cache for this plugin
+                    import sys
+                    module_name = f"plugin_{plugin_id}"
+                    if module_name in sys.modules:
+                        del sys.modules[module_name]
+                        print(f"Cleared module cache for {module_name}")
+                    
+                    # Reload the plugin
+                    success = plugin_manager.load_plugin(plugin_id)
+                    if success:
+                        plugin_instance = plugin_manager.loaded_plugins[plugin_id]
+                        print(f"Reloaded plugin, new methods: {[method for method in dir(plugin_instance) if not method.startswith('_')]}")
+                    else:
+                        QMessageBox.critical(self, "Plugin Error", "Failed to reload the Home Assistant plugin.")
+                        return
+                
+                if hasattr(plugin_instance, 'configure'):
+                    print("Calling configure method...")
+                    plugin_instance.configure()
+                else:
+                    print("Configure method still not found after reload")
+                    QMessageBox.warning(self, "Plugin Error", 
+                                      "The Home Assistant plugin does not support configuration. Please restart the application.")
+            else:
+                QMessageBox.warning(self, "Plugin Not Loaded", 
+                                  "The Home Assistant plugin must be enabled first.")
+        except Exception as e:
+            print(f"Error configuring Home Assistant plugin: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to open configuration: {str(e)}")
     
     def get_email_plugin_status(self, plugin_id):
         """Get status text for email plugin configuration"""
@@ -560,9 +633,10 @@ class PluginSettingsDialog(QMainWindow):
     
     def detect_programs(self):
         """Use AI to detect and categorize programs for focus modes"""
-        if not ai_service.is_available():
+        from gemini_service import gemini_service
+        if not gemini_service.is_available():
             QMessageBox.warning(self, "AI Service Unavailable", 
-                              "AI service is not available. Please ensure your Groq API key is configured in groq_api_key.txt")
+                              "AI service is not available. Please ensure your Gemini API key is configured in gemini_api_key.txt")
             return
         
         # Show confirmation dialog
@@ -587,7 +661,7 @@ class PluginSettingsDialog(QMainWindow):
         try:
             # Get installed applications
             print("Getting installed applications...")
-            apps = ai_service.get_installed_applications()
+            apps = gemini_service.get_installed_applications()
             progress.setValue(30)
             QApplication.processEvents()
             
@@ -596,7 +670,7 @@ class PluginSettingsDialog(QMainWindow):
             
             # Categorize apps
             print("Categorizing applications with AI...")
-            app_categories = ai_service.categorize_apps_for_modes(apps)
+            app_categories = gemini_service.categorize_apps_for_modes(apps)
             progress.setValue(60)
             QApplication.processEvents()
             
@@ -605,7 +679,7 @@ class PluginSettingsDialog(QMainWindow):
             
             # Generate website blocks
             print("Generating website blocks...")
-            site_categories = ai_service.generate_website_blocks_for_modes()
+            site_categories = gemini_service.generate_website_blocks_for_modes()
             progress.setValue(80)
             QApplication.processEvents()
             

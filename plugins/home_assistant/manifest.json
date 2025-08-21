@@ -1,0 +1,8 @@
+{
+    "name": "Home Assistant Integration",
+    "version": "1.0.0",
+    "description": "Activates Home Assistant scenes/presets based on focus modes to create custom smart home environments for productivity, creativity, and social media detox sessions.",
+    "main_file": "plugin.py",
+    "author": "Focus Utility",
+    "permissions": ["network"]
+}

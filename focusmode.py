@@ -12,7 +12,7 @@ import os
 import signal
 import atexit
 from PyQt5.QtWidgets import QApplication, QDialog
-from focus_launcher import TimePickerDialog, GoalsDialog, GoalsReviewDialog, CountdownWindow, FocusLauncher, PluginTaskDialog, FinalGoalsDialog, get_app_icon, stop_focus_mode_with_password
+from focus_launcher import TimePickerDialog, GoalsDialog, GoalsReviewDialog, CountdownWindow, CountdownManager, FocusLauncher, PluginTaskDialog, FinalGoalsDialog, get_app_icon, stop_focus_mode_with_password
 
 
 def main():
@@ -23,24 +23,24 @@ def main():
 Examples:
   # Hybrid mode (GUI dialogs but skip mode selector):
   python focusmode.py productivity                 # Shows duration picker, goals dialog, etc.
-  python focusmode.py social --goals "Check email" # Use provided goals, show duration picker
+  python focusmode.py social_media_detox --goals "Check email" # Use provided goals, show duration picker
   python focusmode.py deep 90                      # Use provided duration, show goals dialog
   
   # Full CLI mode (no GUI dialogs):
-  python focusmode.py social 60 --no-gui          # Fully automated session
+  python focusmode.py social_media_detox 60 --no-gui          # Fully automated session
   python focusmode.py productivity 90 --goals "Finish report;Review emails" --no-gui
   
   # Other options:
   python focusmode.py deep 120 --no-countdown     # Skip countdown screen
   python focusmode.py --list                      # List available focus modes  
-  python focusmode.py --status social             # Show mode details
+  python focusmode.py --status social_media_detox             # Show mode details
   
   Note: All sessions use full blocking (apps + websites) with sudo authentication.
         '''
     )
     
     parser.add_argument('mode', nargs='?', 
-                       help='Focus mode to activate (social, productivity, creativity)')
+                       help='Focus mode to activate (social_media_detox, productivity, creativity)')
     parser.add_argument('duration', nargs='?', type=int,
                        help='Session duration in minutes (if not provided, shows duration picker)')
     parser.add_argument('--goals', type=str,
@@ -76,7 +76,7 @@ Examples:
         print("Error: Mode is required. Use --list to see available modes.")
         return
     
-    available_modes = ['productivity', 'creativity', 'social']
+    available_modes = ['productivity', 'creativity', 'social_media_detox']
     if args.mode not in available_modes:
         print(f"Error: Invalid mode '{args.mode}'. Available modes: {', '.join(available_modes)}")
         return
@@ -138,12 +138,12 @@ def list_modes():
     print("Available Focus Modes:")
     print("  productivity - Work and focus apps only")
     print("  creativity   - Design and creative tools")
-    print("  social       - Communication and collaboration")
+    print("  social_media_detox - Digital wellness and deep focus")
 
 
 def show_mode_status(mode):
     """Show status for a specific mode"""
-    available_modes = ['productivity', 'creativity', 'social']
+    available_modes = ['productivity', 'creativity', 'social_media_detox']
     if mode not in available_modes:
         print(f"Error: Invalid mode '{mode}'. Available modes: {', '.join(available_modes)}")
         return
@@ -260,13 +260,13 @@ def run_cli_session(app, args):
                 print("Final goals review cancelled. Exiting.")
                 return
     
-    # Show countdown (unless skipped)
+    # Show countdown on all displays (unless skipped)
     if not args.no_countdown:
-        countdown = CountdownWindow(args.mode)
+        countdown = CountdownManager(args.mode, app)
         countdown.show()
         
         # Wait for countdown to finish
-        while not countdown.countdown_finished:
+        while not countdown.check_countdown_finished():
             app.processEvents()
             if not countdown.isVisible():
                 break
@@ -279,7 +279,7 @@ def run_cli_session(app, args):
     from focus_launcher import ProgressPopup, get_popup_interval_setting
     popup_interval = get_popup_interval_setting()
     print(f"DEBUG: CLI using popup interval: {popup_interval} minutes")
-    progress_popup = ProgressPopup(session_duration, final_goals, popup_interval=popup_interval)
+    progress_popup = ProgressPopup(session_duration, final_goals, popup_interval=popup_interval, mode=args.mode)
     
     # Set progress popup reference for plugin system
     try:
