@@ -415,6 +415,22 @@ class PluginSettingsDialog(QMainWindow):
                     QPushButton:hover { background-color: #f0f8ff; }
                 """)
                 header_layout.addWidget(config_btn)
+            elif plugin_id == 'wifi_led_lamp':
+                config_btn = QPushButton("Configure")
+                config_btn.clicked.connect(lambda _, pid=plugin_id: self.configure_wifi_led_plugin(pid))
+                config_btn.setStyleSheet("""
+                    QPushButton {
+                        padding: 6px 12px;
+                        font-size: 12px;
+                        font-weight: 500;
+                        border: 1px solid #007aff;
+                        border-radius: 6px;
+                        background-color: white;
+                        color: #007aff;
+                    }
+                    QPushButton:hover { background-color: #f0f8ff; }
+                """)
+                header_layout.addWidget(config_btn)
             
             plugin_layout.addLayout(header_layout)
             
@@ -533,6 +549,31 @@ class PluginSettingsDialog(QMainWindow):
             if plugin_id in plugin_manager.loaded_plugins:
                 plugin_instance = plugin_manager.loaded_plugins[plugin_id]
                 plugin_instance.configure_email()
+    
+    def configure_wifi_led_plugin(self, plugin_id):
+        """Configure the WiFi LED plugin"""
+        try:
+            # Enable plugin first if not enabled
+            if not plugin_manager.is_plugin_enabled(plugin_id):
+                plugin_manager.enable_plugin(plugin_id)
+                # Update checkbox state
+                if plugin_id in self.plugin_checkboxes:
+                    self.plugin_checkboxes[plugin_id].setChecked(True)
+            
+            # Get the plugin instance and call its configure method
+            if plugin_id in plugin_manager.loaded_plugins:
+                plugin_instance = plugin_manager.loaded_plugins[plugin_id]
+                if hasattr(plugin_instance, 'configure'):
+                    plugin_instance.configure()
+                else:
+                    QMessageBox.warning(self, "Plugin Error", 
+                                      "The WiFi LED plugin does not support configuration.")
+            else:
+                QMessageBox.warning(self, "Plugin Not Loaded", 
+                                  "The WiFi LED plugin must be enabled first.")
+        except Exception as e:
+            print(f"Error configuring WiFi LED plugin: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to open configuration: {str(e)}")
     
     def save_changes(self):
         """Save plugin enable/disable changes and app settings"""

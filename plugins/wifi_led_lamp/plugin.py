@@ -687,6 +687,11 @@ class Plugin(PluginBase):
         """Return the settings configuration widget"""
         return LampSettingsDialog(self)
     
+    def configure(self):
+        """Show configuration dialog"""
+        dialog = LampSettingsDialog(self)
+        dialog.exec_()
+    
     def on_session_start(self, session_data: Dict[str, Any]):
         """Handle session start"""
         print(f"DEBUG: WiFi LED Lamp on_session_start called!")

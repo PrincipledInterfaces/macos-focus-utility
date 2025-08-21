@@ -226,6 +226,10 @@ class Plugin:
         else:
             print(f"No Home Assistant scene configured for {mode} mode")
     
+    def on_session_update(self, elapsed_minutes: float, progress_percent: float):
+        """Called during session updates - no action needed for Home Assistant"""
+        pass
+    
     def on_session_end(self, session_data: Dict[str, Any]):
         """Called when a focus session ends"""
         if not self.settings.get('enabled') or not self.session_active:
