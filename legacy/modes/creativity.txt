@@ -1,0 +1,28 @@
+Adobe Photoshop 2025
+Arduino IDE
+Autodesk Fusion
+BambuStudio
+Blackmagic Proxy Generator
+Blackmagic RAW Player
+Blackmagic RAW Speed Test
+Blender
+CarveraController
+CotEditor
+DaVinci Control Panels Setup
+DaVinci Remote Monitor
+DaVinci Resolve
+Fairlight Studio Utility
+Figma
+Google Chrome
+Image Converter
+KiCad
+Logi Options
+Logic Pro
+MakeraCAM
+Page Layout Editor
+Parsec
+Raspberry Pi Imager
+Revisual
+Schematic Editor
+The Unarchiver
+Visual Studio Code

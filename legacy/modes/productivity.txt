@@ -1,0 +1,32 @@
+Arduino IDE
+Autodesk Fusion
+Autodesk Fusion Service Utility
+BambuStudio
+Battery Indicator
+Blackmagic Proxy Generator
+Blackmagic RAW Player
+Blackmagic RAW Speed Test
+Blender
+CarveraController
+CotEditor
+DaVinci Control Panels Setup
+DaVinci Remote Monitor
+DaVinci Resolve
+Fairlight Studio Utility
+Figma
+GerbView
+Google Chrome
+Image Converter
+KiCad
+Logi Options
+LogiMgr Uninstaller
+Logic Pro
+MakeraCAM
+Page Layout Editor
+Parsec
+Raspberry Pi Imager
+Remove Autodesk Fusion
+Revisual
+Schematic Editor
+The Unarchiver
+Visual Studio Code

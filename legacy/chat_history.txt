@@ -1,0 +1,4 @@
+user: hello
+assistant: Hey there! How can I help you focus today?
+user: i need to remember to do an email
+assistant: Got it! I've added "Send important email" to your to-do list. You're all set!
