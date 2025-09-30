@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct HomeView: View {
-    let onEnvironmentSelected: (TOMEEnvironment) -> Void
+    let onEnvironmentSelected: (TOMEEnvironment, CGPoint) -> Void
     @ObservedObject var currentState: TOMEState
     
     @State private var selectedEnvironment: TOMEEnvironment = .planning
@@ -69,38 +69,43 @@ struct HomeView: View {
     }
     
     private var doorPortal: some View {
-        ZStack {
-            // Simple door frame
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                .frame(width: 200, height: 300)
-            
-            // Inner glow when hovered
-            RoundedRectangle(cornerRadius: 16)
-                .fill(selectedEnvironment.primaryColor.opacity(isHovering ? 0.05 : 0.02))
-                .frame(width: 200, height: 300)
-            
-            // Environment icon - centered and clean
-            VStack(spacing: 16) {
-                Image(systemName: selectedEnvironment.icon)
-                    .font(.tomeTitle().weight(.ultraLight))
-                    .foregroundColor(.white.opacity(0.8))
+        GeometryReader { geometry in
+            ZStack {
+                // Simple door frame
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    .frame(width: 200, height: 300)
                 
-                Text("Enter")
-                    .font(.tomeSmall())
-                    .foregroundColor(.white.opacity(0.6))
+                // Inner glow when hovered
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(selectedEnvironment.primaryColor.opacity(isHovering ? 0.05 : 0.02))
+                    .frame(width: 200, height: 300)
+                
+                // Environment icon - centered and clean
+                VStack(spacing: 16) {
+                    Image(systemName: selectedEnvironment.icon)
+                        .font(.tomeTitle().weight(.ultraLight))
+                        .foregroundColor(.white.opacity(0.8))
+                    
+                    Text("Enter")
+                        .font(.tomeSmall())
+                        .foregroundColor(.white.opacity(0.6))
+                }
             }
-        }
-        .scaleEffect(isHovering ? 1.02 : 1.0)
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isHovering = hovering
+            .scaleEffect(isHovering ? 1.02 : 1.0)
+            .onHover { hovering in
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isHovering = hovering
+                }
             }
+            .onTapGesture {
+                let frame = geometry.frame(in: .global)
+                let center = CGPoint(x: frame.midX, y: frame.midY)
+                onEnvironmentSelected(selectedEnvironment, center)
+            }
+            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedEnvironment)
         }
-        .onTapGesture {
-            onEnvironmentSelected(selectedEnvironment)
-        }
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedEnvironment)
+        .frame(width: 200, height: 300)
     }
     
     // Quick access to recent environments - clear and intuitive
@@ -114,7 +119,8 @@ struct HomeView: View {
                 ForEach(currentState.projects.prefix(3)) { project in
                     Button(action: {
                         selectedEnvironment = project.environment
-                        onEnvironmentSelected(project.environment)
+                        // Use a default center position for recent tasks
+                        onEnvironmentSelected(project.environment, CGPoint(x: 400, y: 300))
                     }) {
                         VStack(spacing: 4) {
                             Image(systemName: project.environment.icon)

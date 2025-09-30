@@ -5,6 +5,9 @@
 DerivedData/
 *.xcworkspace
 
+# Old Code
+legacy/
+
 # Build outputs
 releases/
 *.app

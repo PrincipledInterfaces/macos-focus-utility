@@ -172,7 +172,7 @@ class FocusEnforcementService: ObservableObject {
         
         let distractingBundleIds = [
             "com.netflix.Netflix",
-            "com.google.Chrome", // Only if visiting distracting sites
+            // Removed Chrome - TOME now uses Chrome for development and shouldn't kill it
             "com.valvesoftware.steam",
             "com.epicgames.launcher",
             "com.twitterrific.mac",
@@ -321,7 +321,7 @@ class FocusEnforcementService: ObservableObject {
         // Define focused applications based on current environment
         let focusedApps = [
             "Visual Studio Code", "Xcode", "Terminal", "TOME",
-            "Safari", "Pages", "Microsoft Word", "Notion"
+            "Safari", "Google Chrome", "Pages", "Microsoft Word", "Notion"
         ]
         
         return focusedApps.contains(appName)
