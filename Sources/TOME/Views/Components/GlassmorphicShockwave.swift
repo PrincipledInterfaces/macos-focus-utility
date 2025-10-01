@@ -46,12 +46,12 @@ struct GlassmorphicShockwave: View {
 
     private func expandingWaves(maxRadius: CGFloat) -> some View {
         ZStack {
-            // Main expanding glassmorphic wave rings
-            ForEach(0..<5, id: \.self) { ringIndex in
+            // Main expanding glassmorphic wave rings (reduced from 5 to 3 for performance)
+            ForEach(0..<3, id: \.self) { ringIndex in
                 waveRing(index: ringIndex, maxRadius: maxRadius)
             }
 
-            // Organic radial gradient fill
+            // Organic radial gradient fill (reduced blur for performance)
             Circle()
                 .fill(
                     RadialGradient(
@@ -68,13 +68,13 @@ struct GlassmorphicShockwave: View {
                 )
                 .frame(width: maxRadius * 2 * waveProgress, height: maxRadius * 2 * waveProgress)
                 .position(center)
-                .blur(radius: 8)
+                .blur(radius: 4)
         }
     }
 
     private func waveRing(index: Int, maxRadius: CGFloat) -> some View {
         let ringIndex = CGFloat(index)
-        let ringOpacity = waveOpacity * (1.0 - ringIndex * 0.15)
+        let ringOpacity = waveOpacity * (1.0 - ringIndex * 0.2)
 
         return Circle()
             .stroke(
@@ -89,21 +89,22 @@ struct GlassmorphicShockwave: View {
                     endPoint: .bottomTrailing
                 ),
                 style: StrokeStyle(
-                    lineWidth: 8 - ringIndex * 1.5,
+                    lineWidth: 10 - ringIndex * 2,
                     lineCap: .round
                 )
             )
             .frame(
-                width: maxRadius * 2 * waveProgress * (1.0 - ringIndex * 0.12),
-                height: maxRadius * 2 * waveProgress * (1.0 - ringIndex * 0.12)
+                width: maxRadius * 2 * waveProgress * (1.0 - ringIndex * 0.15),
+                height: maxRadius * 2 * waveProgress * (1.0 - ringIndex * 0.15)
             )
             .position(center)
-            .blur(radius: 2 + ringIndex * 0.5)
+            .blur(radius: 1.5)
+            .drawingGroup() // GPU acceleration for smooth rendering
     }
 
     private func centralEffects(maxRadius: CGFloat) -> some View {
         ZStack {
-            // Inner glow
+            // Inner glow (reduced blur)
             Circle()
                 .fill(
                     RadialGradient(
@@ -119,30 +120,32 @@ struct GlassmorphicShockwave: View {
                 )
                 .frame(width: 200 * innerGlowScale, height: 200 * innerGlowScale)
                 .position(center)
-                .blur(radius: 20)
+                .blur(radius: 12)
+                .drawingGroup()
 
-            // Inner particles
-            ForEach(0..<24, id: \.self) { index in
+            // Reduced particles for performance (12 instead of 24)
+            ForEach(0..<12, id: \.self) { index in
                 particleView(index: index, distance: 100 + waveProgress * 200, size: 12, rotation: particleRotation)
             }
 
-            // Outer particles
-            ForEach(0..<16, id: \.self) { index in
+            // Reduced outer particles (8 instead of 16)
+            ForEach(0..<8, id: \.self) { index in
                 particleView(index: index, distance: 150 + waveProgress * 300, size: 6, rotation: -particleRotation * 0.5)
             }
 
-            // Glassmorphic blur overlay
+            // Glassmorphic blur overlay (reduced blur radius)
             Circle()
                 .fill(Color.white.opacity(0.02))
                 .frame(width: maxRadius * 2 * waveProgress * 0.8, height: maxRadius * 2 * waveProgress * 0.8)
                 .position(center)
-                .blur(radius: 40)
+                .blur(radius: 20)
                 .opacity(waveOpacity)
+                .drawingGroup()
         }
     }
 
     private func particleView(index: Int, distance: CGFloat, size: CGFloat, rotation: Double) -> some View {
-        let angle = Double(index) * .pi / (size > 10 ? 12 : 8) + rotation
+        let angle = Double(index) * .pi / (size > 10 ? 6 : 4) + rotation
 
         return Circle()
             .fill(
@@ -162,8 +165,9 @@ struct GlassmorphicShockwave: View {
                 x: center.x + cos(angle) * distance,
                 y: center.y + sin(angle) * distance
             )
-            .blur(radius: size > 10 ? 3 : 2)
+            .blur(radius: 1.5)
             .opacity(waveOpacity * 0.6)
+            .drawingGroup()
     }
 
     private func startShockwave() {
