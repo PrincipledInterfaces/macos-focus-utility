@@ -64,14 +64,16 @@ struct WorkshopView: View {
                 workshopToolIcon(
                     tool: .vscode,
                     systemName: "curlybraces.square.fill",
-                    color: Color.blue
+                    color: Color.blue,
+                    glowIntensity: 0.15  // Reduced glow
                 )
                 
                 // Terminal Icon
                 workshopToolIcon(
                     tool: .terminal,
                     systemName: "terminal.fill",
-                    color: Color.green
+                    color: Color.green,
+                    glowIntensity: 0.15  // Reduced glow
                 )
             }
             
@@ -80,7 +82,7 @@ struct WorkshopView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
-    private func workshopToolIcon(tool: WorkshopTool, systemName: String, color: Color) -> some View {
+    private func workshopToolIcon(tool: WorkshopTool, systemName: String, color: Color, glowIntensity: Double = 0.3) -> some View {
         GeometryReader { geometry in
             Button(action: {
                 // Capture the center point for wave animation
@@ -104,22 +106,43 @@ struct WorkshopView: View {
                     }
                 }
             }) {
-                Image(systemName: systemName)
-                    .font(.system(size: 80, weight: .medium))
-                    .foregroundColor(color.opacity(0.8))
+                ZStack {
+                    // Base icon with enhanced glassmorphic effects
+                    Image(systemName: systemName)
+                        .font(.system(size: 80, weight: .medium))
+                        .foregroundColor(color)
+                        // Multiple layered shadows for depth
+                        .shadow(color: color.opacity(glowIntensity), radius: 25, x: 0, y: 0) // Strong glow
+                        .shadow(color: color.opacity(glowIntensity * 0.7), radius: 40, x: 0, y: 0) // Outer glow
+                        .shadow(color: .white.opacity(0.5), radius: 12, x: -6, y: -6) // Top-left highlight
+                        .shadow(color: .white.opacity(0.2), radius: 20, x: -10, y: -10) // Extended highlight
+                        .shadow(color: .black.opacity(0.6), radius: 12, x: 6, y: 6) // Bottom-right shadow
+                        .shadow(color: .black.opacity(0.3), radius: 20, x: 10, y: 10) // Extended shadow
+                    
+                    // Primary glass reflection
+                    Image(systemName: systemName)
+                        .font(.system(size: 80, weight: .medium))
+                        .foregroundColor(.white.opacity(0.25))
+                        .blur(radius: 1.5)
+                        .offset(x: -3, y: -3)
+                    
+                    // Secondary glass reflection for more depth
+                    Image(systemName: systemName)
+                        .font(.system(size: 80, weight: .medium))
+                        .foregroundColor(.white.opacity(0.1))
+                        .blur(radius: 3)
+                        .offset(x: -6, y: -6)
+                    
+                    // Subtle color gradient overlay
+                    Image(systemName: systemName)
+                        .font(.system(size: 80, weight: .medium))
+                        .foregroundColor(color.opacity(0.1))
+                        .blur(radius: 4)
+                        .offset(x: 2, y: 2)
+                }
                     .frame(width: 120, height: 120)
-                    .background(
-                        RoundedRectangle(cornerRadius: 24)
-                            .fill(color.opacity(0.1))
-                            .stroke(color.opacity(0.3), lineWidth: 2)
-                    )
-                    .scaleEffect(1.0)
-                    .animation(.easeInOut(duration: 0.2), value: false)
             }
             .buttonStyle(PlainButtonStyle())
-            .onHover { isHovered in
-                // Subtle hover effect
-            }
         }
         .frame(width: 120, height: 120)
     }
@@ -140,7 +163,7 @@ struct WorkshopView: View {
     }
     
     private var waveAnimationOverlay: some View {
-        ImpactfulWaveAnimationView(center: waveCenter, isActive: $showWaveAnimation)
+        SimpleRipple(center: waveCenter, isActive: showWaveAnimation)
     }
     
     private func updateAIAgentContext() {
@@ -192,6 +215,7 @@ struct CustomIDEView: View {
                         currentProjectPath = projectPath
                         showProjectSelector = false
                         ideManager.loadProject(at: projectPath)
+                        ideTerminal.setWorkingDirectory(projectPath)
                         tomeState.globalAIAgent?.currentProjectPath = projectPath
                     }
                 )
@@ -205,6 +229,13 @@ struct CustomIDEView: View {
         .onChange(of: selectedFile) { _, newFile in
             // Update AI agent when file selection changes
             tomeState.globalAIAgent?.updateSelectedFile(newFile)
+        }
+        .onChange(of: ideManager.selectedFile) { _, newFile in
+            // Sync ideManager.selectedFile to view's selectedFile binding
+            // This ensures when AI sets ideManager.selectedFile, the view updates
+            if selectedFile?.path != newFile?.path {
+                selectedFile = newFile
+            }
         }
     }
     
@@ -983,6 +1014,18 @@ struct TerminalInterface: View {
                 .font(.system(size: 13, design: .monospaced))
                 .foregroundColor(.white)
                 .textFieldStyle(PlainTextFieldStyle())
+                .onKeyPress(.upArrow) {
+                    if let cmd = terminal.previousCommand() {
+                        commandInput = cmd
+                    }
+                    return .handled
+                }
+                .onKeyPress(.downArrow) {
+                    if let cmd = terminal.nextCommand() {
+                        commandInput = cmd
+                    }
+                    return .handled
+                }
                 .onSubmit {
                     terminal.executeCommand(commandInput)
                     commandInput = ""
@@ -1005,7 +1048,9 @@ class TerminalEmulator: ObservableObject {
     @Published var outputLines: [String] = []
     @Published var lineColors: [Color] = []
     @Published var currentDirectory: String = ""
-    
+    @Published var commandHistory: [String] = []
+    @Published var historyIndex: Int = -1
+
     var promptText: String {
         let homeDir = NSHomeDirectory()
         let displayPath: String
@@ -1035,10 +1080,16 @@ class TerminalEmulator: ObservableObject {
     }
     
     func executeCommand(_ command: String) {
+        // Add command to history
+        if !command.isEmpty {
+            commandHistory.append(command)
+            historyIndex = commandHistory.count
+        }
+
         // Add command to output with proper prompt
         outputLines.append("\(promptText) \(command)")
         lineColors.append(.green)
-        
+
         // Simulate command execution
         let result = processCommand(command)
         outputLines.append(contentsOf: result.lines)
@@ -1049,7 +1100,19 @@ class TerminalEmulator: ObservableObject {
             self.objectWillChange.send()
         }
     }
-    
+
+    func previousCommand() -> String? {
+        guard !commandHistory.isEmpty else { return nil }
+        historyIndex = max(0, historyIndex - 1)
+        return commandHistory[historyIndex]
+    }
+
+    func nextCommand() -> String? {
+        guard !commandHistory.isEmpty else { return nil }
+        historyIndex = min(commandHistory.count, historyIndex + 1)
+        return historyIndex < commandHistory.count ? commandHistory[historyIndex] : ""
+    }
+
     private func processCommand(_ command: String) -> (lines: [String], colors: [Color]) {
         let cmd = command.trimmingCharacters(in: .whitespacesAndNewlines)
         let parts = cmd.split(separator: " ", maxSplits: 1).map(String.init)
@@ -1100,9 +1163,57 @@ class TerminalEmulator: ObservableObject {
             return (lines: [], colors: [])
             
         default:
+            // Execute real shell commands for anything not built-in
+            return executeRealCommand(cmd)
+        }
+    }
+
+    private func executeRealCommand(_ command: String) -> (lines: [String], colors: [Color]) {
+        let process = Process()
+        let pipe = Pipe()
+        let errorPipe = Pipe()
+
+        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        process.arguments = ["-c", command]
+        process.currentDirectoryURL = URL(fileURLWithPath: currentDirectory)
+        process.standardOutput = pipe
+        process.standardError = errorPipe
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+
+            let outputData = pipe.fileHandleForReading.readDataToEndOfFile()
+            let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+
+            var lines: [String] = []
+            var colors: [Color] = []
+
+            // Add standard output
+            if let output = String(data: outputData, encoding: .utf8), !output.isEmpty {
+                let outputLines = output.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+                lines.append(contentsOf: outputLines)
+                colors.append(contentsOf: Array(repeating: Color.white.opacity(0.9), count: outputLines.count))
+            }
+
+            // Add error output
+            if let error = String(data: errorData, encoding: .utf8), !error.isEmpty {
+                let errorLines = error.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+                lines.append(contentsOf: errorLines)
+                colors.append(contentsOf: Array(repeating: Color.red.opacity(0.9), count: errorLines.count))
+            }
+
+            // If no output, add empty line
+            if lines.isEmpty {
+                lines.append("")
+                colors.append(.white)
+            }
+
+            return (lines: lines, colors: colors)
+        } catch {
             return (
-                lines: ["Command not found: \(baseCommand)", "Type 'help' for available commands", ""],
-                colors: [.red, .white.opacity(0.6), .white]
+                lines: ["Error executing command: \(error.localizedDescription)", ""],
+                colors: [.red, .white]
             )
         }
     }
@@ -1214,6 +1325,22 @@ class TerminalEmulator: ObservableObject {
             )
         }
     }
+
+    init(startingDirectory: String) {
+        currentDirectory = startingDirectory
+        outputLines.append("Welcome to TOME Terminal")
+        lineColors.append(.green)
+        outputLines.append("Project directory: \(startingDirectory)")
+        lineColors.append(.blue.opacity(0.8))
+        outputLines.append("")
+        lineColors.append(.white)
+    }
+    
+    func setWorkingDirectory(_ path: String) {
+        currentDirectory = path
+        outputLines.append("Changed directory to: \(path)")
+        lineColors.append(.blue.opacity(0.8))
+    }
 }
 
 // MARK: - Web View Container
@@ -1270,7 +1397,11 @@ class IDEManager: ObservableObject {
     }
     
     func loadProjectStructure() {
-        projectStructure = buildProjectTree(at: workspaceRoot)
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+            self.projectStructure = self.buildProjectTree(at: self.workspaceRoot)
+            print("🔄 Project structure reloaded: \(self.projectStructure.count) top-level items")
+        }
     }
     
     func navigateToDirectory(_ path: String) {
@@ -1300,13 +1431,27 @@ class IDEManager: ObservableObject {
     func createFile(_ file: IDEFile) {
         // Write file to disk
         do {
+            // Ensure directory exists
+            let directory = (file.path as NSString).deletingLastPathComponent
+            try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+
             try file.content.write(toFile: file.path, atomically: true, encoding: .utf8)
-            
+
             // Add to files list and open it
             files.append(file)
+
+            // Force UI update
+            objectWillChange.send()
+
+            // Refresh project structure to show new file in sidebar
+            loadProjectStructure()
+
+            // Open the newly created file
             openFile(file)
+
+            print("✅ File created successfully: \(file.path)")
         } catch {
-            print("Failed to create file: \(error)")
+            print("❌ Failed to create file: \(error)")
         }
     }
     
@@ -1317,18 +1462,23 @@ class IDEManager: ObservableObject {
     }
     
     func updateFile(_ file: IDEFile) {
-        // Update the file in the files array
-        if let index = files.firstIndex(where: { $0.id == file.id }) {
-            files[index] = file
+        DispatchQueue.main.async {
+            // Update the file in the files array
+            if let index = self.files.firstIndex(where: { $0.id == file.id }) {
+                self.files[index] = file
+            }
+
+            // Update in open files if it's open
+            if let index = self.openFiles.firstIndex(where: { $0.id == file.id }) {
+                self.openFiles[index] = file
+            }
+
+            // Force UI update
+            self.objectWillChange.send()
+
+            // Save to disk
+            self.saveFile(file, content: file.content)
         }
-        
-        // Update in open files if it's open
-        if let index = openFiles.firstIndex(where: { $0.id == file.id }) {
-            openFiles[index] = file
-        }
-        
-        // Save to disk
-        saveFile(file, content: file.content)
     }
     
     func loadProject(at path: String) {
@@ -1574,10 +1724,30 @@ struct FileExplorerSidebar: View {
                 if !newFileName.isEmpty {
                     ideManager.createNewFile(name: newFileName, content: "")
                     newFileName = ""
+                    showCreateFileDialog = false
+
+                    // Restore keyboard input after dialog closes
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        NSApp.activate(ignoringOtherApps: true)
+                        if let window = NSApp.windows.first {
+                            window.makeKey()
+                            window.makeMain()
+                        }
+                    }
                 }
             }
             Button("Cancel", role: .cancel) {
                 newFileName = ""
+                showCreateFileDialog = false
+
+                // Restore keyboard input after dialog closes
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    NSApp.activate(ignoringOtherApps: true)
+                    if let window = NSApp.windows.first {
+                        window.makeKey()
+                        window.makeMain()
+                    }
+                }
             }
         }
     }
@@ -1779,7 +1949,7 @@ struct EditorTabBar: View {
     let openFiles: [IDEFile]
     @Binding var selectedFile: IDEFile?
     let onCloseFile: (IDEFile) -> Void
-    
+
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 0) {
@@ -1791,12 +1961,13 @@ struct EditorTabBar: View {
                         onClose: { onCloseFile(file) }
                     )
                 }
-                
+
                 Spacer()
             }
         }
-        .frame(height: 40)
+        .frame(minHeight: 40, maxHeight: 40)
         .background(Color(red: 0.18, green: 0.18, blue: 0.18))
+        .opacity(openFiles.isEmpty ? 0.5 : 1.0) // Slightly fade when empty but keep visible
     }
 }
 
@@ -1851,6 +2022,7 @@ struct CodeEditor: View {
     @State private var isAITyping = false
     @State private var inlinePreview: String = ""
     @State private var currentSuggestion: CodeSuggestion? = nil
+    @FocusState private var isEditorFocused: Bool
     
     var body: some View {
         VStack(spacing: 0) {
@@ -1883,34 +2055,102 @@ struct CodeEditor: View {
                 .padding(.vertical, 12)
                 .background(Color.gray.opacity(0.1))
                 
-                // Code editor area with autocomplete
-                ZStack(alignment: .topLeading) {
-                    SimpleSyntaxHighlightedEditor(
-                        text: $editedContent,
-                        fileExtension: getFileExtension(file.name),
-                        inlinePreview: inlinePreview,
-                        onTabPress: {
-                            if !inlinePreview.isEmpty {
-                                acceptInlinePreview()
+                // Code editor area with line numbers and autocomplete
+                HStack(spacing: 0) {
+                    // Line numbers
+                    ScrollView {
+                        VStack(alignment: .trailing, spacing: 0) {
+                            ForEach(Array(editedContent.components(separatedBy: "\n").enumerated()), id: \.offset) { index, _ in
+                                Text("\(index + 1)")
+                                    .font(.system(size: 13, design: .monospaced))
+                                    .foregroundColor(.white.opacity(0.4))
+                                    .frame(minWidth: 40, alignment: .trailing)
+                                    .frame(height: 18)
                             }
                         }
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .onChange(of: editedContent) { _, newValue in
-                        hasUnsavedChanges = (newValue != file.content)
-                        updateAutocompleteSuggestions(for: newValue)
+                        .padding(.trailing, 8)
                     }
-                    .onTapGesture {
-                        inlinePreview = ""
+                    .frame(width: 50)
+                    .background(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .scrollDisabled(true) // Prevent independent scrolling
+
+                    ZStack(alignment: .topLeading) {
+                        TextEditor(text: $editedContent)
+                            .font(.system(size: 13, design: .monospaced))
+                            .foregroundColor(.white)
+                            .background(.clear)
+                            .scrollContentBackground(.hidden)
+                            .focused($isEditorFocused)
+                            .onKeyPress(.tab) {
+                                if !inlinePreview.isEmpty {
+                                    acceptInlinePreview()
+                                    return .handled
+                                }
+                                return .ignored
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .onChange(of: editedContent) { _, newValue in
+                                hasUnsavedChanges = (newValue != file.content)
+                                updateAutocompleteSuggestions(for: newValue)
+                            }
+                            .onTapGesture {
+                                inlinePreview = ""
+                                isEditorFocused = true
+                            }
+                    
+                    // Inline preview overlay
+                    if !inlinePreview.isEmpty {
+                        VStack(alignment: .leading, spacing: 0) {
+                            let textLines = editedContent.components(separatedBy: "\n")
+                            
+                            ForEach(0..<textLines.count, id: \.self) { index in
+                                HStack(alignment: .top, spacing: 0) {
+                                    // Make existing text invisible to align preview properly
+                                    Text(textLines[index])
+                                        .font(.system(size: 13, design: .monospaced))
+                                        .foregroundColor(.clear)
+                                    
+                                    // Show preview on the last line
+                                    if index == textLines.count - 1 {
+                                        Text(inlinePreview)
+                                            .font(.system(size: 13, design: .monospaced))
+                                            .foregroundColor(.white.opacity(0.4))
+                                            .italic()
+                                    }
+                                    
+                                    Spacer()
+                                }
+                                .frame(maxWidth: .infinity, minHeight: 18, alignment: .leading)
+                            }
+                        }
+                        .allowsHitTesting(false)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 8)
+                    }
                     }
                 }
                 .onAppear {
                     editedContent = file.content
                     hasUnsavedChanges = false
+                    // Ensure editor gets focus when file opens
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        isEditorFocused = true
+                    }
                 }
                 .onChange(of: file.path) { _, _ in
                     editedContent = file.content
                     hasUnsavedChanges = false
+                    // Restore focus when switching files
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        isEditorFocused = true
+                    }
+                }
+                .onChange(of: file.content) { _, newContent in
+                    // Update editor content when file content changes (e.g., from AI typing)
+                    // Only update if user hasn't made local edits
+                    if !hasUnsavedChanges {
+                        editedContent = newContent
+                    }
                 }
             } else {
                 // Welcome screen
@@ -1963,6 +2203,37 @@ struct CodeEditor: View {
                 DispatchQueue.main.async {
                     // Set inline preview to the first AI suggestion if available
                     if let firstSuggestion = aiSuggestions.first {
+                        currentSuggestion = firstSuggestion
+                        inlinePreview = firstSuggestion.completion
+                    }
+                }
+            }
+        } else {
+            inlinePreview = ""
+        }
+    }
+    
+    private func triggerAutocomplete(text: String) {
+        // Simplified autocomplete trigger for new editor
+        updateAutocompleteSuggestions(for: text)
+    }
+    
+    private func handleCursorChange(position: Int, currentLine: String) {
+        // Update autocomplete based on cursor position and current line
+        if !currentLine.trimmingCharacters(in: .whitespaces).isEmpty {
+            // Get indentation context for better suggestions
+            let indentLevel = currentLine.prefix(while: { $0 == " " || $0 == "\t" }).count
+            
+            // Update autocomplete with proper context
+            getAIAutocompleteSuggestions(
+                currentLine: currentLine,
+                fullContext: editedContent,
+                fileType: getFileExtension(file?.name ?? ""),
+                fileName: file?.name ?? "",
+                tomeState: tomeState
+            ) { suggestions in
+                DispatchQueue.main.async {
+                    if let firstSuggestion = suggestions.first {
                         currentSuggestion = firstSuggestion
                         inlinePreview = firstSuggestion.completion
                     }
@@ -2516,7 +2787,7 @@ struct IDEToolbar: View {
     private func getRunCommand(for file: IDEFile) -> String {
         let fileName = file.name
         let filePath = file.path
-        
+
         switch file.fileExtension {
         case "py":
             return "python3 \"\(filePath)\""
@@ -2649,6 +2920,18 @@ struct IDETerminalPanel: View {
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.white)
                     .textFieldStyle(PlainTextFieldStyle())
+                    .onKeyPress(.upArrow) {
+                        if let cmd = terminal.previousCommand() {
+                            commandInput = cmd
+                        }
+                        return .handled
+                    }
+                    .onKeyPress(.downArrow) {
+                        if let cmd = terminal.nextCommand() {
+                            commandInput = cmd
+                        }
+                        return .handled
+                    }
                     .onSubmit {
                         terminal.executeCommand(commandInput)
                         commandInput = ""

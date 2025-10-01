@@ -36,10 +36,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         
         // Configure window for fullscreen takeover
-        window.level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()) + 1)
+        // TEMPORARILY USING NORMAL LEVEL TO ALLOW KEYBOARD INPUT
+        window.level = .normal  // Was: CGShieldingWindowLevel() + 1 (blocked keyboard)
         window.collectionBehavior = [
-            .canJoinAllSpaces, 
-            .fullScreenAuxiliary, 
+            .canJoinAllSpaces,
+            .fullScreenAuxiliary,
             .ignoresCycle,
             .canJoinAllApplications,
             .auxiliary
@@ -75,7 +76,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Then set up fullscreen
         window.setFrame(screen.frame, display: true, animate: false)
-        window.level = NSWindow.Level.floating // Use floating instead of shielding
+        window.level = .normal // Use normal level to allow keyboard input
         window.styleMask = [.borderless, .fullSizeContentView]
         window.backgroundColor = .black
         window.isOpaque = true
@@ -84,6 +85,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.isMovable = false
         window.canHide = false
         window.hidesOnDeactivate = false
+
+        // Ensure window can receive keyboard events
+        window.acceptsMouseMovedEvents = true
+        window.makeFirstResponder(nil) // Clear any existing responder
+
+        // Force window to accept keyboard input
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            window.makeKey()
+            NSApp.activate(ignoringOtherApps: true)
+        }
         
         // Hide system UI but allow app switching (less aggressive)
         NSApp.presentationOptions = [

@@ -47,6 +47,7 @@ class OpenAIService: ObservableObject {
     func chatCompletion(
         messages: [ChatMessage],
         model: String = "gpt-4",
+        maxTokens: Int? = nil,
         completion: @escaping (Result<String, Error>) -> Void
     ) {
         guard !apiKey.isEmpty else {
@@ -54,20 +55,24 @@ class OpenAIService: ObservableObject {
             completion(.failure(OpenAIError.missingAPIKey))
             return
         }
-        
+
         print("Making OpenAI API call with model: \(model)")
-        
+
         let url = URL(string: "\(baseURL)/chat/completions")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+
+        // Use provided maxTokens or determine based on model
+        let tokenLimit = maxTokens ?? (model.contains("gpt-4") || model.contains("gpt-5") ? 4000 : 1000)
+        print("🎯 Using token limit: \(tokenLimit)")
+
         let requestBody = ChatCompletionRequest(
             model: model,
             messages: messages,
             temperature: 0.7,
-            maxTokens: 1000
+            maxTokens: tokenLimit
         )
         
         do {
@@ -78,18 +83,42 @@ class OpenAIService: ObservableObject {
         }
         
         URLSession.shared.dataTaskPublisher(for: request)
-            .map(\.data)
+            .tryMap { data, response in
+                // Log the raw response for debugging
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("📡 OpenAI API HTTP Status: \(httpResponse.statusCode)")
+                    if httpResponse.statusCode != 200 {
+                        if let responseString = String(data: data, encoding: .utf8) {
+                            print("❌ API Error Response: \(responseString)")
+                        }
+                    } else {
+                        // Log successful response body for debugging
+                        if let responseString = String(data: data, encoding: .utf8) {
+                            print("📦 API Response Body: \(responseString)")
+                        }
+                    }
+                }
+                return data
+            }
             .decode(type: ChatCompletionResponse.self, decoder: JSONDecoder())
             .sink(
                 receiveCompletion: { taskCompletion in
                     if case .failure(let error) = taskCompletion {
+                        print("❌ OpenAI API error: \(error.localizedDescription)")
+                        if let decodingError = error as? DecodingError {
+                            print("🔍 Decoding error details: \(decodingError)")
+                        }
                         completion(.failure(error))
                     }
                 },
                 receiveValue: { response in
+                    print("📊 Response has \(response.choices.count) choices")
                     if let message = response.choices.first?.message.content {
+                        print("✅ OpenAI API success - received \(message.count) characters")
+                        print("💬 Message content: \(message)")
                         completion(.success(message))
                     } else {
+                        print("❌ OpenAI returned empty response or no content field")
                         completion(.failure(OpenAIError.emptyResponse))
                     }
                 }

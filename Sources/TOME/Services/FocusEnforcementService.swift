@@ -4,9 +4,9 @@ import Combine
 import UserNotifications
 
 class FocusEnforcementService: ObservableObject {
-    @Published var isEnforcementActive = false
+    @Published var isEnforcementActive = false // TEMPORARILY DISABLED - set to false by default
     @Published var currentFocusMode: FocusMode = .balanced
-    @Published var enforcementStrength: EnforcementStrength = .medium
+    @Published var enforcementStrength: EnforcementStrength = .disabled // TEMPORARILY DISABLED
     @Published var blockedAppsToday: [String] = []
     @Published var focusViolations: Int = 0
     
@@ -129,17 +129,9 @@ class FocusEnforcementService: ObservableObject {
     // MARK: - Focus Rules Application
     
     private func applyFocusRules(_ rules: FocusRules, for environment: TOMEEnvironment) {
-        // Get all running applications
-        let runningApps = workspace.runningApplications
-        
-        for app in runningApps {
-            guard let appName = app.localizedName,
-                  let bundleId = app.bundleIdentifier else { continue }
-            
-            if shouldBlockApplication(appName, bundleId: bundleId, rules: rules) {
-                blockApplication(app, rules: rules)
-            }
-        }
+        // App blocking has been disabled
+        // This function no longer blocks any applications
+        return
     }
     
     private func shouldBlockApplication(_ appName: String, bundleId: String, rules: FocusRules) -> Bool {
@@ -199,32 +191,9 @@ class FocusEnforcementService: ObservableObject {
     // MARK: - Enforcement Actions
     
     private func blockApplication(_ app: NSRunningApplication, rules: FocusRules) {
-        guard let appName = app.localizedName else { return }
-        
-        print("🚫 Blocking application: \(appName)")
-        
-        // Record the violation
-        reportFocusViolation(appName)
-        
-        // Apply enforcement action based on strength
-        switch enforcementStrength {
-        case .lenient:
-            // Just hide the app
-            hideApplication(app)
-            showLenientBlockNotification(appName)
-            
-        case .medium:
-            // Gracefully quit the app
-            if !app.terminate() {
-                hideApplication(app)
-            }
-            showMediumBlockNotification(appName)
-            
-        case .strict:
-            // Force quit the app
-            app.forceTerminate()
-            showStrictBlockNotification(appName)
-        }
+        // App blocking has been completely disabled
+        // This function no longer blocks any applications
+        return
     }
     
     private func hideApplication(_ app: NSRunningApplication) {
@@ -401,12 +370,18 @@ class FocusEnforcementService: ObservableObject {
     
     private func escalateEnforcement() {
         switch enforcementStrength {
+        case .disabled:
+            enforcementStrength = .lenient
+            showEnforcementEscalatedNotification("Lenient")
+
         case .lenient:
             enforcementStrength = .medium
             showEnforcementEscalatedNotification("Medium")
+
         case .medium:
             enforcementStrength = .strict
             showEnforcementEscalatedNotification("Strict")
+
         case .strict:
             // Already at maximum - maybe implement additional measures
             break
@@ -614,8 +589,9 @@ enum FocusMode: String, CaseIterable {
 }
 
 enum EnforcementStrength: String {
+    case disabled = "disabled" // TEMPORARILY ADDED - no enforcement
     case lenient = "lenient"
-    case medium = "medium" 
+    case medium = "medium"
     case strict = "strict"
 }
 

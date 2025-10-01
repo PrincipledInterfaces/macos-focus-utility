@@ -418,18 +418,8 @@ class ApplicationService: ObservableObject {
     }
     
     private func enforceApplicationPolicy() {
-        let disallowedApps = runningApplications.filter { app in
-            !allowedApplications.contains(app.name) && 
-            !isSystemApplication(app.name) &&
-            app.name != "TOME"
-        }
-        
-        for app in disallowedApps {
-            if shouldBlockApplication(app.name) {
-                print("Blocking disallowed application: \(app.name)")
-                _ = quitApplicationByPID(app.pid)
-            }
-        }
+        // App blocking has been completely disabled
+        return
     }
     
     private func shouldBlockApplication(_ appName: String) -> Bool {

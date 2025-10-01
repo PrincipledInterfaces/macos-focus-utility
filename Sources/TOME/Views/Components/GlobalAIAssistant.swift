@@ -95,6 +95,12 @@ struct GlobalAIAssistant: View {
                             chatMessageView(message)
                                 .id(index)
                         }
+
+                        // Thinking animation when processing
+                        if isProcessing {
+                            thinkingIndicator
+                                .id("thinking")
+                        }
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
@@ -103,6 +109,13 @@ struct GlobalAIAssistant: View {
                 .onChange(of: aiAgent.conversationHistory.count) { _, _ in
                     withAnimation {
                         proxy.scrollTo(aiAgent.conversationHistory.count - 1)
+                    }
+                }
+                .onChange(of: isProcessing) { _, newValue in
+                    if newValue {
+                        withAnimation {
+                            proxy.scrollTo("thinking")
+                        }
                     }
                 }
             }
@@ -183,12 +196,45 @@ struct GlobalAIAssistant: View {
         .padding(.horizontal, 12)
     }
     
+    private var thinkingIndicator: some View {
+        HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
+                SineWaveThinking(color: environmentColor())
+                    .frame(width: 50, height: 20)
+                    .padding(8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(.white.opacity(0.05))
+                    )
+            }
+
+            Spacer()
+        }
+    }
+
+    private func environmentColor() -> Color {
+        switch aiAgent.currentEnvironment {
+        case .planning:
+            return .blue
+        case .writerDesk:
+            return .green
+        case .workshop:
+            return .purple
+        case .coffeeshop:
+            return .orange
+        case .garden:
+            return .green
+        case .home:
+            return .white
+        }
+    }
+
     private func chatMessageView(_ message: AIMessage) -> some View {
         HStack(alignment: .top, spacing: 8) {
             if message.role == .user {
                 Spacer()
             }
-            
+
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
                 Text(message.content)
                     .font(.tomeSmallLabel())
@@ -198,12 +244,20 @@ struct GlobalAIAssistant: View {
                         RoundedRectangle(cornerRadius: 8)
                             .fill(message.role == .user ? .blue.opacity(0.2) : .white.opacity(0.1))
                     )
-                
+
+                // Action indicators (small text below AI messages)
+                if message.role == .assistant, let indicators = message.actionIndicators, !indicators.isEmpty {
+                    Text(indicators.joined(separator: " • "))
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(.white.opacity(0.4))
+                        .padding(.top, 2)
+                }
+
                 Text(formatTime(message.timestamp))
                     .font(.tomeTiny())
                     .foregroundColor(.white.opacity(0.5))
             }
-            
+
             if message.role == .assistant {
                 Spacer()
             }
@@ -296,5 +350,48 @@ extension GlobalAIAssistant {
             )
         }
         .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Sine Wave Thinking Animation
+struct SineWaveThinking: View {
+    let color: Color
+    @State private var phase: CGFloat = 0
+
+    var body: some View {
+        TimelineView(.animation) { timeline in
+            Canvas { context, size in
+                let timeOffset = timeline.date.timeIntervalSinceReferenceDate
+                let animatedPhase = CGFloat(timeOffset * 2.0).truncatingRemainder(dividingBy: 2 * .pi)
+
+                var path = Path()
+                let midHeight = size.height / 2
+                let amplitude = size.height / 3
+
+                path.move(to: CGPoint(x: 0, y: midHeight))
+
+                // Create smooth sine wave
+                for x in stride(from: 0, through: size.width, by: 0.5) {
+                    let relativeX = x / size.width
+                    let sine = sin((relativeX * 4 * .pi) - animatedPhase)
+                    let y = midHeight + (sine * amplitude)
+                    path.addLine(to: CGPoint(x: x, y: y))
+                }
+
+                // Draw the wave with glow effect
+                context.stroke(
+                    path,
+                    with: .color(color.opacity(0.9)),
+                    lineWidth: 2.5
+                )
+
+                // Add glow
+                context.stroke(
+                    path,
+                    with: .color(color.opacity(0.3)),
+                    lineWidth: 6
+                )
+            }
+        }
     }
 }

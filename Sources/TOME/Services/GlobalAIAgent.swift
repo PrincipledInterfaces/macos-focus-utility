@@ -10,33 +10,105 @@ class GlobalAIAgent: ObservableObject {
     @Published var suggestions: [AIAgentSuggestion] = []
     @Published var contextualTips: [String] = []
     @Published var isAnimatingTyping = false
-    
+    @Published var memories: [AIMemory] = []
+
     private let openAIService: OpenAIService
     private weak var tomeState: TOMEState?
     private var cancellables = Set<AnyCancellable>()
-    
+
+    // Persistence keys
+    private let conversationHistoryKey = "AIConversationHistory"
+    private let memoriesKey = "AIMemories"
+    private let sessionStartKey = "AISessionStart"
+
     // Context awareness
     var currentEnvironment: TOMEEnvironment = .home
     private var currentTodos: [Todo] = []
     private var userActivity: [String] = []
-    
+
     // Workshop Integration
     weak var currentTerminal: TerminalEmulator?
     weak var currentIDEManager: IDEManager?
     private var currentWorkshopTool: WorkshopTool?
     private var currentSelectedFile: IDEFile?
     var currentProjectPath: String?
-    
+
     init(openAIService: OpenAIService, tomeState: TOMEState) {
         self.openAIService = openAIService
         self.tomeState = tomeState
-        
+
+        // Load persistent memories (survive app restarts)
+        loadMemories()
+
+        // Check if this is a new session and clear conversation history if so
+        checkAndClearConversationHistory()
+
         setupContextMonitoring()
         generateInitialSuggestions()
     }
     
     // MARK: - Public Interface
     
+    // MARK: - Helper Methods
+
+    /// Check if the request requires complex code generation or is a simple query
+    private func isComplexCodeGenerationRequest(_ message: String) -> Bool {
+        let lowerMessage = message.lowercased()
+
+        // Keywords indicating complex code generation
+        let codeKeywords = ["create", "write", "generate", "build", "make", "implement"]
+        let artifactKeywords = ["app", "program", "project", "function", "class", "component", "file", "script", "website", "game"]
+
+        // Check if message contains code generation intent
+        let hasCodeKeyword = codeKeywords.contains { lowerMessage.contains($0) }
+        let hasArtifactKeyword = artifactKeywords.contains { lowerMessage.contains($0) }
+
+        // If both are present and message is substantial, it's likely complex code generation
+        if hasCodeKeyword && hasArtifactKeyword && message.count > 20 {
+            return true
+        }
+
+        // Check for explicit multi-file or large project indicators
+        let complexIndicators = ["multiple files", "full", "complete", "entire", "whole app", "with tests"]
+        if complexIndicators.contains(where: { lowerMessage.contains($0) }) {
+            return true
+        }
+
+        // Otherwise, it's a simple query
+        return false
+    }
+
+    /// Make the actual API request (extracted from sendMessage for reuse)
+    private func makeActualRequest(message: String, maxTokens: Int, completion: @escaping (Result<String, Error>) -> Void) {
+        let contextualPrompt = self.buildContextualPromptWithFunctions(userMessage: message)
+        let chatMessages = [ChatMessage(role: "user", content: contextualPrompt)]
+
+        self.openAIService.chatCompletion(messages: chatMessages, model: "gpt-4o", maxTokens: maxTokens) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let response):
+                    // Parse and execute any function calls in the response
+                    self.parseFunctionCallsAndExecute(response: response) { cleanedResponse, actionIndicators in
+                        // cleanedResponse has function calls removed
+                        // actionIndicators are the actions that were executed
+
+                        let aiMessage = AIMessage(
+                            role: .assistant,
+                            content: cleanedResponse,
+                            timestamp: Date(),
+                            actionIndicators: actionIndicators
+                        )
+                        self.conversationHistory.append(aiMessage)
+                        completion(.success(cleanedResponse))
+                    }
+
+                case .failure(let error):
+                    completion(.failure(error))
+                }
+            }
+        }
+    }
+
     /// Send a message to the AI agent and get a response
     func sendMessage(_ message: String, completion: @escaping (Result<String, Error>) -> Void) {
         let userMessage = AIMessage(role: .user, content: message, timestamp: Date())
@@ -71,30 +143,51 @@ class GlobalAIAgent: ObservableObject {
             }
         }
         
-        let contextualPrompt = buildContextualPromptWithFunctions(userMessage: message)
-        let chatMessages = [ChatMessage(role: "user", content: contextualPrompt)]
-        
-        openAIService.chatCompletion(messages: chatMessages, model: "gpt-3.5-turbo") { [weak self] result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let response):
-                    // Parse and execute any function calls in the response
-                    self?.parseFunctionCallsAndExecute(response: response) { executedActions in
-                        var finalResponse = response
-                        
-                        if let actionResult = executedActions, !actionResult.isEmpty {
-                            finalResponse = "\(response)\n\n✅ \(actionResult)"
-                        }
-                        
-                        let aiMessage = AIMessage(role: .assistant, content: finalResponse, timestamp: Date())
-                        self?.conversationHistory.append(aiMessage)
-                        completion(.success(finalResponse))
-                    }
-                    
-                case .failure(let error):
-                    completion(.failure(error))
+        // Determine if this is a simple query or complex code generation
+        let needsTokenEstimation = self.isComplexCodeGenerationRequest(message)
+
+        if needsTokenEstimation {
+            // For complex requests, estimate tokens needed
+            let estimationPrompt = """
+            Analyze this request and estimate the TOTAL number of tokens needed for a complete response (including all code, explanations, and function calls).
+
+            Request: "\(message)"
+
+            Consider:
+            - Number of files to create
+            - Lines of code per file
+            - Complexity of implementation
+            - Any explanatory text
+
+            Respond with ONLY a number (e.g., "2500" or "8000"). Add 20% headroom. Maximum is 16000.
+            """
+
+            let estimationMessages = [ChatMessage(role: "user", content: estimationPrompt)]
+
+            // Get token estimate from AI
+            openAIService.chatCompletion(messages: estimationMessages, model: "gpt-4o", maxTokens: 100) { [weak self] estimateResult in
+                guard let self = self else { return }
+
+                let estimatedTokens: Int
+                switch estimateResult {
+                case .success(let estimate):
+                    // Parse the number from AI response
+                    let cleanedEstimate = estimate.trimmingCharacters(in: .whitespacesAndNewlines)
+                    estimatedTokens = Int(cleanedEstimate) ?? 4000
+                    print("🤖 AI estimated tokens needed: \(estimatedTokens)")
+                case .failure:
+                    // Fallback to default
+                    estimatedTokens = 4000
+                    print("⚠️ Failed to get AI estimate, using default: \(estimatedTokens)")
                 }
+
+                // Now make the actual request with AI-determined token limit
+                self.makeActualRequest(message: message, maxTokens: estimatedTokens, completion: completion)
             }
+        } else {
+            // For simple queries, skip token estimation and use a reasonable default
+            print("💬 Simple query detected - skipping token estimation")
+            self.makeActualRequest(message: message, maxTokens: 1000, completion: completion)
         }
     }
     
@@ -137,13 +230,17 @@ class GlobalAIAgent: ObservableObject {
         case .createFile:
             if let fileName = action.parameters["fileName"] as? String,
                let content = action.parameters["content"] as? String {
-                createFileWithAnimation(fileName: fileName, content: content)
+                createFileWithAnimation(fileName: fileName, content: content) {
+                    // Animation completed
+                }
             }
-            
+
         case .writeCode:
             if let code = action.parameters["code"] as? String,
                let fileName = action.parameters["fileName"] as? String {
-                writeCodeWithAnimation(code: code, fileName: fileName)
+                writeCodeWithAnimation(code: code, fileName: fileName) {
+                    // Animation completed
+                }
             }
             
         case .executeTerminal:
@@ -167,52 +264,88 @@ class GlobalAIAgent: ObservableObject {
     // MARK: - AI Action Implementation Functions
     
     /// Create a new file with animated typing effect
-    private func createFileWithAnimation(fileName: String, content: String) {
-        guard let ideManager = currentIDEManager else { return }
-        
+    private func createFileWithAnimation(fileName: String, content: String, completion: @escaping () -> Void) {
+        guard let ideManager = currentIDEManager else {
+            completion()
+            return
+        }
+
         DispatchQueue.main.async {
-            // Create the file in the IDE manager
-            let newFile = IDEFile(name: fileName, path: "", isDirectory: false, content: content)
+            // Build proper file path
+            let projectPath = self.currentProjectPath ?? ideManager.currentDirectory
+            let fullPath = (projectPath as NSString).appendingPathComponent(fileName)
+
+            print("📝 Creating file: \(fileName) at \(fullPath)")
+
+            // Create the file in the IDE manager with EMPTY content initially
+            let newFile = IDEFile(name: fileName, path: fullPath, isDirectory: false, content: "")
             ideManager.createFile(newFile)
-            
-            // Open the file for editing
-            self.openFileInIDE(fileName: fileName)
-            
-            // Animate typing the content
-            self.animateTypingCode(content: content)
+
+            // Select and open the file
+            ideManager.selectedFile = newFile
+            if !ideManager.openFiles.contains(where: { $0.path == newFile.path }) {
+                ideManager.openFile(newFile)
+            }
+
+            print("✅ File created and opened: \(fileName)")
+
+            // Animate typing the content - this will populate the file
+            self.animateTypingCode(content: content, fileName: fileName, completion: completion)
         }
     }
     
     /// Write code to existing file with animation
-    private func writeCodeWithAnimation(code: String, fileName: String) {
-        guard let ideManager = currentIDEManager else { return }
-        
+    private func writeCodeWithAnimation(code: String, fileName: String, completion: @escaping () -> Void) {
+        guard let ideManager = currentIDEManager else {
+            completion()
+            return
+        }
+
         DispatchQueue.main.async {
-            // Find and open the file
-            if let file = ideManager.openFiles.first(where: { $0.name == fileName }) {
-                // Update file content
+            // Find the file in the files list
+            if let file = ideManager.files.first(where: { $0.name == fileName }) {
+                print("📝 Updating file: \(fileName)")
+
+                // Clear file content first
                 var updatedFile = file
-                updatedFile.content = code
+                updatedFile.content = ""
                 ideManager.updateFile(updatedFile)
-                
-                // Animate typing the new code
-                self.animateTypingCode(content: code)
+
+                // Select and open the file
+                ideManager.selectedFile = updatedFile
+                if !ideManager.openFiles.contains(where: { $0.name == fileName }) {
+                    ideManager.openFile(updatedFile)
+                }
+
+                print("✅ File cleared, starting animation: \(fileName)")
+
+                // Animate typing the new code - this will populate the file
+                self.animateTypingCode(content: code, fileName: fileName, completion: completion)
             } else {
                 // File doesn't exist, create it
-                self.createFileWithAnimation(fileName: fileName, content: code)
+                print("⚠️ File not found, creating: \(fileName)")
+                self.createFileWithAnimation(fileName: fileName, content: code, completion: completion)
             }
         }
     }
     
     /// Execute terminal command with fast typing animation
     private func executeTerminalCommandWithAnimation(command: String) {
-        guard let terminal = currentTerminal else { return }
-        
+        guard let terminal = currentTerminal else {
+            print("❌ Cannot execute terminal command: terminal is nil")
+            print("🔧 Current workshop tool: \(currentWorkshopTool?.name ?? "nil")")
+            print("🔧 Current environment: \(currentEnvironment)")
+            return
+        }
+
+        print("✅ Executing terminal command: \(command)")
+
         DispatchQueue.main.async {
             // Animate typing the command
             self.animateTypingTerminalCommand(command: command) {
                 // Execute the command after typing animation
                 terminal.executeCommand(command)
+                print("✅ Command executed in terminal: \(command)")
             }
         }
     }
@@ -257,26 +390,42 @@ class GlobalAIAgent: ObservableObject {
     // MARK: - Animation Functions
     
     /// Animate typing code with realistic speed
-    private func animateTypingCode(content: String) {
+    private func animateTypingCode(content: String, fileName: String, completion: @escaping () -> Void) {
+        guard let ideManager = currentIDEManager else {
+            completion()
+            return
+        }
+
         // This will be implemented to simulate fast typing in the IDE
         // Characters will appear rapidly as if someone is typing very fast
         let typingSpeed = 0.003 // 3ms per character - very fast but visible
-        
+
         isAnimatingTyping = true
-        
+
         for (index, character) in content.enumerated() {
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * typingSpeed) {
                 // Add character to the currently selected file
                 // This will need to interface with the code editor
                 NotificationCenter.default.post(
-                    name: NSNotification.Name("AITypingCharacter"), 
+                    name: NSNotification.Name("AITypingCharacter"),
                     object: String(character)
                 )
-                
+
                 // Mark animation as complete after last character
                 if index == content.count - 1 {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         self.isAnimatingTyping = false
+                        print("🎬 Animation completed for \(content.count) characters")
+
+                        // Save the final content to the file
+                        if let file = ideManager.files.first(where: { $0.name == fileName }) {
+                            var updatedFile = file
+                            updatedFile.content = content
+                            ideManager.updateFile(updatedFile)
+                            print("💾 Saved final content to \(fileName)")
+                        }
+
+                        completion()
                     }
                 }
             }
@@ -338,7 +487,7 @@ class GlobalAIAgent: ObservableObject {
     }
     
     // MARK: - Context Monitoring
-    
+
     private func setupContextMonitoring() {
         // Monitor environment changes
         tomeState?.$currentEnvironment
@@ -398,31 +547,53 @@ class GlobalAIAgent: ObservableObject {
         let todoContext = getTodoContext()
         let activityContext = getActivityContext()
         let articleContext = getArticleContext()
-        
+        let conversationContext = getConversationContext()
+        let memoriesContext = getMemoriesAsContext()
+
         return """
         You are TOME's global AI assistant, helping users with productivity and focus across different work environments.
-        
+
         Current Context:
         - Environment: \(currentEnvironment.displayName) - \(environmentContext)
         - Active Todos: \(currentTodos.filter { !$0.isCompleted }.count)
         - Recent Activity: \(activityContext)
         \(articleContext)
-        
+
         Todo Context: \(todoContext)
-        
+        \(conversationContext)
+        \(memoriesContext)
+
         User Message: "\(userMessage)"
-        
+
         Respond as a helpful, concise assistant that can:
         1. Help manage tasks and todos
         2. Suggest environment switches for optimal work
         3. Provide productivity insights
         4. Execute actions like creating todos or switching environments
         5. Summarize or analyze articles currently being read
+        6. Reference previous conversation history to maintain context
+        7. Save important information to persistent memory when requested
         \(getEnvironmentSpecificCapabilities())
-        
+
         Keep responses conversational and actionable. If you can help with specific actions, mention them clearly.
         \(getEnvironmentSpecificInstructions())
         """
+    }
+
+    private func getConversationContext() -> String {
+        guard conversationHistory.count > 1 else { return "" }
+
+        // Get last 5 messages (or fewer) for context
+        let recentMessages = conversationHistory.suffix(5)
+        var context = "\n\nRecent Conversation:\n"
+
+        for message in recentMessages {
+            let roleLabel = message.role == .user ? "User" : "Assistant"
+            let preview = message.content.prefix(100)
+            context += "- \(roleLabel): \(preview)\(message.content.count > 100 ? "..." : "")\n"
+        }
+
+        return context
     }
     
     private func getEnvironmentContext() -> String {
@@ -748,13 +919,22 @@ class GlobalAIAgent: ObservableObject {
                 switch tool {
                 case .terminal:
                     return """
-                    
+
                     Workshop Terminal Instructions:
-                    - Automatically execute safe terminal commands when the user asks for navigation or file operations
-                    - When suggesting commands, prioritize actually executing them in the embedded terminal
-                    - For navigation requests like "go to desktop" or "show me files", execute the commands directly
-                    - Provide command explanations after execution to help the user learn
-                    - Focus on filesystem navigation, git operations, and development tool commands
+                    - YOU HAVE FULL TERMINAL ACCESS - Execute ALL commands the user needs
+                    - AUTOMATICALLY install packages/dependencies - DO NOT ask the user to do it
+                    - Run commands for navigation, git, package management, running scripts, etc.
+                    - DO NOT just provide instructions - EXECUTE the actual commands using function calls
+                    - Use [FUNCTION_CALL:execute_terminal(command=...)::END_CALL::] for EVERY command
+                    - You can run multiple commands sequentially for complex tasks
+
+                    Examples of what you MUST DO:
+                    - User: "install pyqt5" → [FUNCTION_CALL:execute_terminal(command=pip install pyqt5)::END_CALL::]
+                    - User: "go to desktop" → [FUNCTION_CALL:execute_terminal(command=cd ~/Desktop && ls)::END_CALL::]
+                    - User: "run the script" → [FUNCTION_CALL:execute_terminal(command=python script.py)::END_CALL::]
+
+                    WRONG: "You can install pyqt5 with: pip install pyqt5"
+                    RIGHT: [FUNCTION_CALL:execute_terminal(command=pip install pyqt5)::END_CALL::]
                     """
                 case .vscode:
                     return """
@@ -1258,11 +1438,21 @@ class GlobalAIAgent: ObservableObject {
         
         return """
         \(basePrompt)
-        
+
         \(functionDefinitions)
-        
-        IMPORTANT: When you want to perform actions, use the function call format:
-        [FUNCTION_CALL:function_name(param1=value1,param2=value2)]
+
+        CRITICAL RULES:
+        1. ALWAYS use function calls for code and commands - NEVER include code in your text response
+        2. Write COMPLETE, PRODUCTION-READY code - not stubs or TODOs
+        3. Format: [FUNCTION_CALL:function_name(param1=value1,param2=value2)::END_CALL::]
+        4. Use \\n for newlines and \\t for tabs in code content
+        5. MUST end every function call with ::END_CALL:: delimiter
+        6. Your text response should only describe what you're doing, not contain code
+
+        Example response:
+        "I'll create a Python script with a main function and a helper module."
+        [FUNCTION_CALL:create_file(fileName=main.py,content=import utils\\n\\ndef main():\\n\\tprint(utils.helper())\\n\\nif __name__ == "__main__":\\n\\tmain())::END_CALL::]
+        [FUNCTION_CALL:create_file(fileName=utils.py,content=def helper():\\n\\treturn "Hello World")::END_CALL::]
         """
     }
     
@@ -1272,54 +1462,136 @@ class GlobalAIAgent: ObservableObject {
             if currentWorkshopTool == .terminal {
                 return """
                 Available Functions:
-                - execute_terminal(command=string): Execute a terminal command
-                
-                Example: [FUNCTION_CALL:execute_terminal(command=ls -la)]
+                - execute_terminal(command=string): Execute a terminal command with typing animation
+
+                CRITICAL TERMINAL RULES:
+                1. AUTOMATICALLY execute commands - DO NOT give instructions to the user
+                2. If user asks to install something, USE THIS FUNCTION to install it
+                3. If user needs a package, USE THIS FUNCTION to install it first
+                4. Always include ::END_CALL:: at the end of every function call
+                5. You can chain commands with && for sequential operations
+                6. IMPORTANT: Use python3 and pip3 for Python (NOT python or pip)
+
+                Examples:
+                [FUNCTION_CALL:execute_terminal(command=pip3 install requests)::END_CALL::]
+                [FUNCTION_CALL:execute_terminal(command=python3 main.py)::END_CALL::]
+                [FUNCTION_CALL:execute_terminal(command=npm install && npm start)::END_CALL::]
+
+                When user says "install pyqt5", your response MUST include:
+                [FUNCTION_CALL:execute_terminal(command=pip3 install pyqt5)::END_CALL::]
                 """
             } else if currentWorkshopTool == .vscode {
                 return """
-                Available Functions:
-                - create_file(fileName=string,content=string): Create a new file
+                Available Functions (YOU MUST USE THESE - DO NOT INCLUDE CODE IN YOUR RESPONSE):
+
+                FILE OPERATIONS:
+                - create_file(fileName=string,content=string): Create a new file with code
                 - write_code(fileName=string,code=string): Write code to existing file
                 - read_file(fileName=string): Read file contents
                 - open_file(fileName=string): Open file in IDE
-                
-                Examples:
-                [FUNCTION_CALL:create_file(fileName=main.py,content=print("Hello World"))]
-                [FUNCTION_CALL:write_code(fileName=main.py,code=def hello(): print("Hi"))]
+
+                TERMINAL OPERATIONS (IDE has embedded terminal):
+                - execute_terminal(command=string): Execute commands in the embedded terminal
+
+                CRITICAL INSTRUCTIONS:
+                1. Put ALL code inside function calls, NOT in your text response
+                2. In the content parameter, use ONLY the string \\n for newlines
+                3. For indentation, use actual spaces (NOT \\t, NOT the word tab, just regular spaces)
+                4. Write complete, production-ready code with proper structure
+                5. Each file should be fully implemented, not just stubs
+                6. MUST end every function call with ::END_CALL:: delimiter
+                7. AUTOMATICALLY install dependencies with execute_terminal - DO NOT give instructions
+                8. IMPORTANT: Use python3 and pip3 for Python (NOT python or pip)
+
+                Example (this will create a properly formatted Python file):
+                [FUNCTION_CALL:create_file(fileName=main.py,content=def main():\\n    print("Hello World")\\n\\nif __name__ == "__main__":\\n    main())::END_CALL::]
+
+                The above creates a file that looks like:
+                def main():
+                    print("Hello World")
+
+                if __name__ == "__main__":
+                    main()
+
+                Note: The 4 spaces before "print" and "main()" are literal spaces in the content parameter.
+
+                More examples:
+                [FUNCTION_CALL:execute_terminal(command=pip3 install requests)::END_CALL::]
+                [FUNCTION_CALL:execute_terminal(command=python3 main.py)::END_CALL::]
+
+                When user says "install pyqt5", you MUST execute:
+                [FUNCTION_CALL:execute_terminal(command=pip3 install pyqt5)::END_CALL::]
                 """
             }
         }
         return ""
     }
     
-    private func parseFunctionCallsAndExecute(response: String, completion: @escaping (String?) -> Void) {
-        // Parse function calls from response and execute them
-        let functionPattern = "\\[FUNCTION_CALL:([^\\]]+)\\]"
-        
-        do {
-            let regex = try NSRegularExpression(pattern: functionPattern, options: [])
-            let matches = regex.matches(in: response, options: [], range: NSRange(location: 0, length: response.count))
-            
-            for match in matches {
-                if let range = Range(match.range(at: 1), in: response) {
-                    let functionCall = String(response[range])
-                    parseSingleFunctionCall(functionCall) { _ in
-                        // Function executed
+    private func parseFunctionCallsAndExecute(response: String, completion: @escaping (String, [String]?) -> Void) {
+        // Parse function calls using explicit ::END_CALL:: delimiter - no ambiguity!
+        var functionCalls: [String] = []
+        var cleanedResponse = response
+        var actionIndicators: [String] = []
+
+        // Find all [FUNCTION_CALL:...::END_CALL::] patterns
+        var searchIndex = response.startIndex
+        while searchIndex < response.endIndex {
+            if let startRange = response[searchIndex...].range(of: "[FUNCTION_CALL:") {
+                // Look for the explicit end delimiter
+                if let endRange = response[startRange.upperBound...].range(of: "::END_CALL::]") {
+                    // Extract the function call content between delimiters
+                    let functionCallStart = startRange.upperBound
+                    let functionCallEnd = endRange.lowerBound
+                    let functionCall = String(response[functionCallStart..<functionCallEnd])
+                    functionCalls.append(functionCall)
+
+                    print("✅ Parsed function call: \(functionCall.prefix(100))...")
+
+                    // Extract function name for action indicator
+                    if let parenIndex = functionCall.firstIndex(of: "(") {
+                        let functionName = String(functionCall[..<parenIndex])
+                        actionIndicators.append(functionName)
                     }
+
+                    // Remove entire function call from cleaned response
+                    let fullCallRange = startRange.lowerBound..<endRange.upperBound
+                    cleanedResponse = cleanedResponse.replacingOccurrences(of: response[fullCallRange], with: "")
+
+                    searchIndex = endRange.upperBound
+                } else {
+                    print("⚠️ Found [FUNCTION_CALL: without ::END_CALL::] - skipping")
+                    searchIndex = response.index(after: startRange.lowerBound)
                 }
+            } else {
+                break
             }
-            
-            // Return the original response instead of just "Functions executed"
-            let responseWithoutFunctionCalls = response.replacingOccurrences(
-                of: "\\[FUNCTION_CALL:[^\\]]+\\]", 
-                with: "", 
-                options: .regularExpression
-            ).trimmingCharacters(in: .whitespacesAndNewlines)
-            
-            completion(responseWithoutFunctionCalls.isEmpty ? "Actions completed successfully." : responseWithoutFunctionCalls)
-        } catch {
-            completion(nil)
+        }
+
+        print("📋 Found \(functionCalls.count) function calls to execute")
+
+        // Execute function calls sequentially
+        executeSequentially(functionCalls: functionCalls, index: 0) {
+            let finalCleanedResponse = cleanedResponse.trimmingCharacters(in: .whitespacesAndNewlines)
+            let finalResponse = finalCleanedResponse.isEmpty ? "Actions completed." : finalCleanedResponse
+            completion(finalResponse, actionIndicators.isEmpty ? nil : actionIndicators)
+        }
+    }
+
+    private func executeSequentially(functionCalls: [String], index: Int, completion: @escaping () -> Void) {
+        guard index < functionCalls.count else {
+            completion()
+            return
+        }
+
+        let functionCall = functionCalls[index]
+        print("🔄 Executing function \(index + 1)/\(functionCalls.count): \(functionCall)")
+
+        // Execute this function call - completion is called when animation finishes
+        parseSingleFunctionCall(functionCall) { result in
+            print("✅ Function completed: \(result ?? "no result")")
+
+            // Move to next function immediately after this one completes
+            self.executeSequentially(functionCalls: functionCalls, index: index + 1, completion: completion)
         }
     }
     
@@ -1330,22 +1602,64 @@ class GlobalAIAgent: ObservableObject {
             completion(nil)
             return
         }
-        
+
         let functionName = String(components[0])
         let paramString = String(components[1]).dropLast() // Remove closing )
-        
+
         var parameters: [String: String] = [:]
-        // Simple parameter parsing - could be enhanced
-        let paramPairs = paramString.split(separator: ",")
-        for pair in paramPairs {
-            let keyValue = pair.split(separator: "=", maxSplits: 1)
-            if keyValue.count == 2 {
-                let key = String(keyValue[0]).trimmingCharacters(in: .whitespaces)
-                let value = String(keyValue[1]).trimmingCharacters(in: .whitespaces)
-                parameters[key] = value
+
+        // Better parameter parsing that handles commas in values
+        // Look for parameter pattern: key=value where the next param starts with ,key=
+        var currentKey = ""
+        var currentValue = ""
+        var i = paramString.startIndex
+
+        while i < paramString.endIndex {
+            // Look for key=
+            if let equalIndex = paramString[i...].firstIndex(of: "=") {
+                // Extract key
+                currentKey = String(paramString[i..<equalIndex]).trimmingCharacters(in: .whitespaces)
+                i = paramString.index(after: equalIndex)
+
+                // Now find the end of the value (either end of string or next ,key=)
+                var valueEnd = paramString.endIndex
+                var searchIndex = i
+
+                while searchIndex < paramString.endIndex {
+                    if paramString[searchIndex] == "," {
+                        // Check if this comma is followed by a parameter name (letters followed by =)
+                        let afterComma = paramString.index(after: searchIndex)
+                        if afterComma < paramString.endIndex {
+                            let remaining = paramString[afterComma...]
+                            // Look for pattern: word characters followed by =
+                            if remaining.range(of: "^\\s*\\w+=", options: .regularExpression) != nil {
+                                valueEnd = searchIndex
+                                break
+                            }
+                        }
+                    }
+                    searchIndex = paramString.index(after: searchIndex)
+                }
+
+                currentValue = String(paramString[i..<valueEnd]).trimmingCharacters(in: .whitespaces)
+                parameters[currentKey] = currentValue
+
+                // Move to next parameter
+                i = valueEnd < paramString.endIndex ? paramString.index(after: valueEnd) : paramString.endIndex
+            } else {
+                break
             }
         }
-        
+
+        print("📝 Parsed parameters: \(parameters.keys.joined(separator: ", "))")
+        for (key, value) in parameters {
+            print("   \(key): \(value.count) characters")
+            if key == "content" || key == "code" {
+                print("   First 100 chars: \(value.prefix(100))")
+                print("   Last 100 chars: \(value.suffix(100))")
+            }
+        }
+
         executeFunctionCall(functionName: functionName, parameters: parameters, completion: completion)
     }
     
@@ -1362,16 +1676,28 @@ class GlobalAIAgent: ObservableObject {
             
         case "create_file":
             if let fileName = parameters["fileName"], let content = parameters["content"] {
-                createFileWithAnimation(fileName: fileName, content: content)
-                completion("Created file: \(fileName)")
+                // Unescape newlines and tabs for proper formatting
+                let formattedContent = content
+                    .replacingOccurrences(of: "\\n", with: "\n")
+                    .replacingOccurrences(of: "\\t", with: "\t")
+
+                createFileWithAnimation(fileName: fileName, content: formattedContent) {
+                    completion("Created file: \(fileName)")
+                }
             } else {
                 completion(nil)
             }
-            
+
         case "write_code":
             if let fileName = parameters["fileName"], let code = parameters["code"] {
-                writeCodeWithAnimation(code: code, fileName: fileName)
-                completion("Wrote code to: \(fileName)")
+                // Unescape newlines and tabs for proper formatting
+                let formattedCode = code
+                    .replacingOccurrences(of: "\\n", with: "\n")
+                    .replacingOccurrences(of: "\\t", with: "\t")
+
+                writeCodeWithAnimation(code: formattedCode, fileName: fileName) {
+                    completion("Wrote code to: \(fileName)")
+                }
             } else {
                 completion(nil)
             }
@@ -1417,12 +1743,14 @@ class GlobalAIAgent: ObservableObject {
         print("🔧 AI Agent executeDirectCommand called: \(command)")
         print("🔧 Current terminal: \(currentTerminal != nil ? "connected" : "nil")")
         print("🔧 Current IDE manager: \(currentIDEManager != nil ? "connected" : "nil")")
-        
+
         switch command {
         case "create_file":
             if let fileName = parameters["fileName"], let content = parameters["content"] {
                 print("🔧 Creating file: \(fileName)")
-                createFileWithAnimation(fileName: fileName, content: content)
+                createFileWithAnimation(fileName: fileName, content: content) {
+                    // Animation completed
+                }
             }
         case "execute_terminal":
             if let command = parameters["command"] {
@@ -1433,7 +1761,79 @@ class GlobalAIAgent: ObservableObject {
             print("Unknown direct command: \(command)")
         }
     }
-    
+
+    // MARK: - Memory & Persistence
+
+    /// Save a persistent memory that survives app restarts
+    func saveMemory(content: String, category: AIMemory.Category) {
+        let memory = AIMemory(content: content, category: category, timestamp: Date())
+        memories.append(memory)
+        persistMemories()
+        print("💾 Saved memory: \(content)")
+    }
+
+    /// Get memories for a specific category
+    func getMemories(for category: AIMemory.Category) -> [AIMemory] {
+        return memories.filter { $0.category == category }
+    }
+
+    /// Delete a memory
+    func deleteMemory(_ memory: AIMemory) {
+        memories.removeAll { $0.id == memory.id }
+        persistMemories()
+    }
+
+    /// Clear all memories
+    func clearAllMemories() {
+        memories.removeAll()
+        persistMemories()
+    }
+
+    private func checkAndClearConversationHistory() {
+        let sessionStart = UserDefaults.standard.object(forKey: sessionStartKey) as? Date
+
+        // If no session start or it's a new launch, clear history
+        if sessionStart == nil || !Calendar.current.isDateInToday(sessionStart!) {
+            print("🆕 New session detected - clearing conversation history")
+            conversationHistory.removeAll()
+            UserDefaults.standard.set(Date(), forKey: sessionStartKey)
+        } else {
+            print("♻️ Continuing existing session - keeping conversation history")
+            // Optionally load saved conversation history here if you want to persist it within a session
+        }
+    }
+
+    private func loadMemories() {
+        if let data = UserDefaults.standard.data(forKey: memoriesKey),
+           let decoded = try? JSONDecoder().decode([AIMemory].self, from: data) {
+            memories = decoded
+            print("💾 Loaded \(memories.count) memories")
+        }
+    }
+
+    private func persistMemories() {
+        if let encoded = try? JSONEncoder().encode(memories) {
+            UserDefaults.standard.set(encoded, forKey: memoriesKey)
+        }
+    }
+
+    /// Get memories as context for AI prompts
+    func getMemoriesAsContext() -> String {
+        guard !memories.isEmpty else { return "" }
+
+        let memoriesByCategory = Dictionary(grouping: memories) { $0.category }
+        var context = "\n\nPersistent Memories (important information to remember):\n"
+
+        for (category, mems) in memoriesByCategory {
+            context += "\n\(category.rawValue):\n"
+            for memory in mems.prefix(5) { // Limit to 5 per category
+                context += "- \(memory.content)\n"
+            }
+        }
+
+        return context
+    }
+
 }
 
 // MARK: - Supporting Types
@@ -1443,10 +1843,40 @@ struct AIMessage {
         case user
         case assistant
     }
-    
+
     let role: Role
     let content: String
     let timestamp: Date
+    let actionIndicators: [String]?
+
+    init(role: Role, content: String, timestamp: Date, actionIndicators: [String]? = nil) {
+        self.role = role
+        self.content = content
+        self.timestamp = timestamp
+        self.actionIndicators = actionIndicators
+    }
+}
+
+struct AIMemory: Codable, Identifiable {
+    let id: UUID
+    let content: String
+    let category: Category
+    let timestamp: Date
+
+    init(content: String, category: Category, timestamp: Date) {
+        self.id = UUID()
+        self.content = content
+        self.category = category
+        self.timestamp = timestamp
+    }
+
+    enum Category: String, Codable {
+        case userPreferences = "User Preferences"
+        case projectInfo = "Project Information"
+        case importantFacts = "Important Facts"
+        case workflows = "Workflows & Processes"
+        case goals = "Goals & Objectives"
+    }
 }
 
 struct AIAgentSuggestion: Identifiable {

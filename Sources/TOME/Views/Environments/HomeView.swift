@@ -71,21 +71,77 @@ struct HomeView: View {
     private var doorPortal: some View {
         GeometryReader { geometry in
             ZStack {
-                // Simple door frame
+                // Glassmorphic rounded rectangle outline (unfilled)
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.6),
+                                Color.white.opacity(0.3),
+                                selectedEnvironment.primaryColor.opacity(0.4),
+                                Color.white.opacity(0.2)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 2
+                    )
                     .frame(width: 200, height: 300)
+                    // Glassmorphic effects on the outline
+                    .shadow(color: .white.opacity(0.3), radius: 8, x: -4, y: -4) // Top-left highlight
+                    .shadow(color: .black.opacity(0.4), radius: 8, x: 4, y: 4) // Bottom-right shadow
+                    .shadow(color: selectedEnvironment.primaryColor.opacity(0.6), radius: 20, x: 0, y: 0) // Color glow
                 
-                // Inner glow when hovered
+                // Inner glow when hovered (subtle)
                 RoundedRectangle(cornerRadius: 16)
                     .fill(selectedEnvironment.primaryColor.opacity(isHovering ? 0.05 : 0.02))
                     .frame(width: 200, height: 300)
                 
-                // Environment icon - centered and clean
+                // Environment icon in center with glassmorphic effects
                 VStack(spacing: 16) {
-                    Image(systemName: selectedEnvironment.icon)
-                        .font(.tomeTitle().weight(.ultraLight))
-                        .foregroundColor(.white.opacity(0.8))
+                    ZStack {
+                        // Base icon with enhanced glassmorphic effects
+                        Image(systemName: selectedEnvironment.icon)
+                            .font(.tomeTitle().weight(.ultraLight))
+                            .foregroundColor(.white.opacity(0.8))
+                            // Multiple layered shadows for depth
+                            .shadow(color: selectedEnvironment.primaryColor.opacity(0.8), radius: 25, x: 0, y: 0) // Strong glow
+                            .shadow(color: selectedEnvironment.primaryColor.opacity(0.4), radius: 40, x: 0, y: 0) // Outer glow
+                            .shadow(color: .white.opacity(0.5), radius: 12, x: -6, y: -6) // Top-left highlight
+                            .shadow(color: .white.opacity(0.2), radius: 20, x: -10, y: -10) // Extended highlight
+                            .shadow(color: .black.opacity(0.6), radius: 12, x: 6, y: 6) // Bottom-right shadow
+                            .shadow(color: .black.opacity(0.3), radius: 20, x: 10, y: 10) // Extended shadow
+                        
+                        // Primary glass reflection
+                        Image(systemName: selectedEnvironment.icon)
+                            .font(.tomeTitle().weight(.ultraLight))
+                            .foregroundColor(.white.opacity(0.25))
+                            .blur(radius: 1.5)
+                            .offset(x: -3, y: -3)
+                        
+                        // Secondary glass reflection for more depth
+                        Image(systemName: selectedEnvironment.icon)
+                            .font(.tomeTitle().weight(.ultraLight))
+                            .foregroundColor(.white.opacity(0.1))
+                            .blur(radius: 3)
+                            .offset(x: -6, y: -6)
+                        
+                        // Subtle color gradient overlay
+                        Image(systemName: selectedEnvironment.icon)
+                            .font(.tomeTitle().weight(.ultraLight))
+                            .foregroundColor(selectedEnvironment.primaryColor.opacity(0.1))
+                            .blur(radius: 4)
+                            .offset(x: 2, y: 2)
+                        
+                        // Hover effect - additional glow
+                        if isHovering {
+                            Image(systemName: selectedEnvironment.icon)
+                                .font(.tomeTitle().weight(.ultraLight))
+                                .foregroundColor(selectedEnvironment.primaryColor.opacity(0.3))
+                                .blur(radius: 8)
+                                .scaleEffect(1.1)
+                        }
+                    }
                     
                     Text("Enter")
                         .font(.tomeSmall())
@@ -123,21 +179,33 @@ struct HomeView: View {
                         onEnvironmentSelected(project.environment, CGPoint(x: 400, y: 300))
                     }) {
                         VStack(spacing: 4) {
-                            Image(systemName: project.environment.icon)
-                                .font(.tomeCaptionMedium())
-                                .foregroundColor(project.environment.primaryColor)
+                            ZStack {
+                                // Base icon with glassmorphic effects
+                                Image(systemName: project.environment.icon)
+                                    .font(.tomeCaptionMedium())
+                                    .foregroundColor(project.environment.primaryColor)
+                                    // Glassmorphic effects scaled for smaller icon
+                                    .shadow(color: project.environment.primaryColor.opacity(0.7), radius: 12, x: 0, y: 0) // Glow
+                                    .shadow(color: .white.opacity(0.4), radius: 6, x: -2, y: -2) // Highlight
+                                    .shadow(color: .black.opacity(0.5), radius: 6, x: 2, y: 2) // Shadow
+                                
+                                // Glass reflection
+                                Image(systemName: project.environment.icon)
+                                    .font(.tomeCaptionMedium())
+                                    .foregroundColor(.white.opacity(0.2))
+                                    .blur(radius: 1)
+                                    .offset(x: -1, y: -1)
+                            }
                             
                             Text(project.environment.displayName)
                                 .font(.tomeTiny())
                                 .foregroundColor(.white.opacity(0.5))
+                                // Subtle glassmorphic effects for text
+                                .shadow(color: .white.opacity(0.1), radius: 2, x: -1, y: -1)
+                                .shadow(color: .black.opacity(0.2), radius: 2, x: 1, y: 1)
                         }
                         .padding(.horizontal, 8)
                         .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(project.environment.primaryColor.opacity(0.1))
-                                .stroke(project.environment.primaryColor.opacity(0.2), lineWidth: 1)
-                        )
                     }
                     .buttonStyle(PlainButtonStyle())
                 }

@@ -1,0 +1,1560 @@
+🔑 Looking for OpenAI API key in locations:
+  Checking: openai_key.txt
+✅ Loaded API key from file: openai_key.txt
+🔑 Key starts with: sk-proj-L9...
+Setting up notification monitoring with workspace and polling approach
+Using alternative notification monitoring (no UNUserNotificationCenter required)
+Calendar access granted
+📱 Cached screen recording permission: false
+Making OpenAI API call with model: gpt-3.5-turbo
+Entering TOME mode - setting up fullscreen
+Screen frame: (0.0, 0.0, 1440.0, 900.0)
+TOME mode entered - window frame: (0.0, 0.0, 1440.0, 900.0)
+Window level: 3
+Blocking disallowed application: CoreServicesUIAgent
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: chronod
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: Spotlight
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: Revisual
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: Creative Cloud Interprocess Service
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: AquaAppearanceHelper
+Blocking disallowed application: DockHelper
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: PowerChime
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+Blocking disallowed application: storeuid
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: Siri
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: 
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: CoreLocationAgent
+Blocking disallowed application: AuthenticationServicesAgent
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: coreautha
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: studentd
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: com.apple.PressAndHold
+Blocking disallowed application: PDF Expert
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: nbagent
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: LookupViewService (Terminal)
+Blocking disallowed application: Family
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: CoreServicesUIAgent
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: chronod
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: Spotlight
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: Revisual
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: Creative Cloud Interprocess Service
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: AquaAppearanceHelper
+Blocking disallowed application: DockHelper
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: PowerChime
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+Blocking disallowed application: storeuid
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: Siri
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: 
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: CoreLocationAgent
+Blocking disallowed application: AuthenticationServicesAgent
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: coreautha
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: studentd
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: com.apple.PressAndHold
+Blocking disallowed application: PDF Expert
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: nbagent
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: LookupViewService (Terminal)
+Blocking disallowed application: Family
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: CoreServicesUIAgent
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: chronod
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: Spotlight
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: Revisual
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: Creative Cloud Interprocess Service
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: AquaAppearanceHelper
+Blocking disallowed application: DockHelper
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: PowerChime
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+Blocking disallowed application: storeuid
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: Siri
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: 
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: CoreLocationAgent
+Blocking disallowed application: AuthenticationServicesAgent
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: coreautha
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: studentd
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: com.apple.PressAndHold
+Blocking disallowed application: PDF Expert
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: nbagent
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: LookupViewService (Terminal)
+Blocking disallowed application: Family
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: CoreServicesUIAgent
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: chronod
+Blocking disallowed application: ViewBridgeAuxiliary
+Switching to environment: Planning
+Environment switch initiated for: Planning
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: Spotlight
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: Revisual
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: Creative Cloud Interprocess Service
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: AquaAppearanceHelper
+🎯 Activating focus mode: balanced for environment: planning
+🎯 Activated Balanced focus mode for Planning
+Switched to environment: Planning
+Blocking disallowed application: CoreServicesUIAgent
+🔑 Looking for OpenAI API key in locations:
+  Checking: openai_key.txt
+✅ Loaded API key from file: openai_key.txt
+🔑 Key starts with: sk-proj-L9...
+Blocking disallowed application: DockHelper
+Blocking disallowed application: Control Strip
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: WindowManager
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: PowerChime
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+Blocking disallowed application: chronod
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: storeuid
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Siri
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: 
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: Spotlight
+Blocking disallowed application: CoreLocationAgent
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: AuthenticationServicesAgent
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: coreautha
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: studentd
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: Revisual
+Blocking disallowed application: com.apple.PressAndHold
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: PDF Expert
+Blocking disallowed application: Creative Cloud Interprocess Service
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: nbagent
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: AquaAppearanceHelper
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: DockHelper
+Blocking disallowed application: LookupViewService (Terminal)
+Blocking disallowed application: Family
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: PowerChime
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: storeuid
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: Siri
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: 
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: CoreLocationAgent
+Blocking disallowed application: AuthenticationServicesAgent
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: coreautha
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: studentd
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: com.apple.PressAndHold
+Blocking disallowed application: PDF Expert
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: nbagent
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: LookupViewService (Terminal)
+Blocking disallowed application: Family
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: Accessibility Services
+Launched application: Calendar
+Switching to environment: Home
+Environment switch initiated for: Home
+App launched: Calendar
+🎯 Activating focus mode: disabled for environment: home
+🎯 Activated Disabled focus mode for Home
+Switched to environment: Home
+Blocking disallowed application: CoreServicesUIAgent
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: chronod
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: Spotlight
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: Revisual
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: Creative Cloud Interprocess Service
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: AquaAppearanceHelper
+Blocking disallowed application: DockHelper
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: PowerChime
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+Blocking disallowed application: storeuid
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: Siri
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: 
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: CoreLocationAgent
+Blocking disallowed application: AuthenticationServicesAgent
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: coreautha
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: studentd
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: com.apple.PressAndHold
+Blocking disallowed application: PDF Expert
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: nbagent
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: LookupViewService (Terminal)
+Blocking disallowed application: Family
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: Calendar
+Blocking disallowed application: CoreServicesUIAgent
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: chronod
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: SystemUIServer
+Switching to environment: Workshop
+Blocking disallowed application: QuickLookUIService (Finder)
+Environment switch initiated for: Workshop
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: Spotlight
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: Revisual
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: Creative Cloud Interprocess Service
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: AquaAppearanceHelper
+Blocking disallowed application: DockHelper
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: PowerChime
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+🎯 Activating focus mode: balanced for environment: workshop
+Blocking disallowed application: storeuid
+🎯 Activated Balanced focus mode for Workshop
+Switched to environment: Workshop
+Blocking disallowed application: CoreServicesUIAgent
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: talagentd
+Blocking disallowed application: Siri
+Blocking disallowed application: Notification Center
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: chronod
+Blocking disallowed application: 
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: CoreLocationAgent
+Blocking disallowed application: Dock
+Blocking disallowed application: AuthenticationServicesAgent
+Blocking disallowed application: Control Center
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: coreautha
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: studentd
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: Spotlight
+Blocking disallowed application: com.apple.PressAndHold
+Blocking disallowed application: PDF Expert
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: nbagent
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: Revisual
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: Creative Cloud Interprocess Service
+Blocking disallowed application: LookupViewService (Terminal)
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: Family
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: AquaAppearanceHelper
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: DockHelper
+Blocking disallowed application: Calendar
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: PowerChime
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+Blocking disallowed application: storeuid
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: Siri
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: 
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: CoreLocationAgent
+🎯 Icon clicked at: (600.0, 450.0)
+🎯 Frame: (540.0, 390.0, 120.0, 120.0)
+Blocking disallowed application: AuthenticationServicesAgent
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: coreautha
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: studentd
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: com.apple.PressAndHold
+Blocking disallowed application: PDF Expert
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: nbagent
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: LookupViewService (Terminal)
+Blocking disallowed application: Family
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: Calendar
+Launched application: Terminal
+Launched application: Visual Studio Code
+App launched: Code
+App terminated: Code
+🔧 AI Agent setCurrentWorkshopTool called
+🔧 Tool: VS Code
+🔧 Terminal provided: false
+🔧 IDE Manager provided: false
+🔧 AI Agent setCurrentWorkshopTool called
+🔧 Tool: VS Code
+🔧 Terminal provided: true
+🔧 IDE Manager provided: true
+🔧 Terminal connected successfully
+🔧 IDE Manager connected successfully
+AppleScript error: {
+    NSAppleScriptErrorBriefMessage = "No error.";
+    NSAppleScriptErrorMessage = "No error.";
+    NSAppleScriptErrorNumber = 0;
+    NSAppleScriptErrorRange = "NSRange: {0, 0}";
+}
+Making OpenAI API call with model: gpt-3.5-turbo
+AppleScript error: {
+    NSAppleScriptErrorBriefMessage = "Expected end of line but found identifier.";
+    NSAppleScriptErrorMessage = "Expected end of line but found identifier.";
+    NSAppleScriptErrorNumber = "-2741";
+    NSAppleScriptErrorRange = "NSRange: {60, 12}";
+}
+Blocking disallowed application: CoreServicesUIAgent
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: chronod
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: Spotlight
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: Revisual
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: Creative Cloud Interprocess Service
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: AquaAppearanceHelper
+Blocking disallowed application: DockHelper
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: PowerChime
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+Blocking disallowed application: storeuid
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: Siri
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: 
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: CoreLocationAgent
+Blocking disallowed application: AuthenticationServicesAgent
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: coreautha
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: studentd
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: com.apple.PressAndHold
+Blocking disallowed application: PDF Expert
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: nbagent
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: LookupViewService (Terminal)
+Blocking disallowed application: Family
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: Calendar
+Blocking disallowed application: FolderActionsDispatcher
+Making OpenAI API call with model: gpt-4
+Blocking disallowed application: CoreServicesUIAgent
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: chronod
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: Spotlight
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: Revisual
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: Creative Cloud Interprocess Service
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: AquaAppearanceHelper
+Blocking disallowed application: DockHelper
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: PowerChime
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+Blocking disallowed application: storeuid
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: Siri
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: 
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: CoreLocationAgent
+Blocking disallowed application: AuthenticationServicesAgent
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: coreautha
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: studentd
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: com.apple.PressAndHold
+Blocking disallowed application: PDF Expert
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: nbagent
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: LookupViewService (Terminal)
+Blocking disallowed application: Family
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: Calendar
+Blocking disallowed application: FolderActionsDispatcher
+Blocking disallowed application: CoreServicesUIAgent
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: chronod
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: Spotlight
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: Revisual
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: Creative Cloud Interprocess Service
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: AquaAppearanceHelper
+Blocking disallowed application: DockHelper
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: PowerChime
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+Blocking disallowed application: storeuid
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: Siri
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: 
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: CoreLocationAgent
+Blocking disallowed application: AuthenticationServicesAgent
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: coreautha
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: studentd
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: com.apple.PressAndHold
+Blocking disallowed application: PDF Expert
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: nbagent
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: LookupViewService (Terminal)
+Blocking disallowed application: Family
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: Calendar
+Blocking disallowed application: CoreServicesUIAgent
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: chronod
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: Spotlight
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: Revisual
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: Creative Cloud Interprocess Service
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: AquaAppearanceHelper
+Blocking disallowed application: DockHelper
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: PowerChime
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+Blocking disallowed application: storeuid
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: Siri
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: 
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: CoreLocationAgent
+Blocking disallowed application: AuthenticationServicesAgent
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: coreautha
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: studentd
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: com.apple.PressAndHold
+Blocking disallowed application: PDF Expert
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: nbagent
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: LookupViewService (Terminal)
+Blocking disallowed application: Family
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: Calendar
+Blocking disallowed application: CoreServicesUIAgent
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: chronod
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: Spotlight
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: Revisual
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: Creative Cloud Interprocess Service
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: AquaAppearanceHelper
+Blocking disallowed application: DockHelper
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: PowerChime
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+Blocking disallowed application: storeuid
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: Siri
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: 
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: CoreLocationAgent
+Blocking disallowed application: AuthenticationServicesAgent
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: coreautha
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: studentd
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: com.apple.PressAndHold
+Blocking disallowed application: PDF Expert
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: nbagent
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: LookupViewService (Terminal)
+Blocking disallowed application: Family
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: Calendar
+Blocking disallowed application: CoreServicesUIAgent
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: chronod
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: Spotlight
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: Revisual
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: Creative Cloud Interprocess Service
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: AquaAppearanceHelper
+Blocking disallowed application: DockHelper
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: PowerChime
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+Blocking disallowed application: storeuid
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: Siri
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: 
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: CoreLocationAgent
+Blocking disallowed application: AuthenticationServicesAgent
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: coreautha
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: studentd
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: com.apple.PressAndHold
+Blocking disallowed application: PDF Expert
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: nbagent
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: LookupViewService (Terminal)
+Blocking disallowed application: Family
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: Calendar
+Blocking disallowed application: Accessibility Services
+Making OpenAI API call with model: gpt-4
+AppleScript error: {
+    NSAppleScriptErrorBriefMessage = "No error.";
+    NSAppleScriptErrorMessage = "No error.";
+    NSAppleScriptErrorNumber = "-2741";
+    NSAppleScriptErrorRange = "NSRange: {0, 0}";
+}
+AppleScript error: {
+    NSAppleScriptErrorBriefMessage = "No error.";
+    NSAppleScriptErrorMessage = "No error.";
+    NSAppleScriptErrorNumber = "-2741";
+    NSAppleScriptErrorRange = "NSRange: {0, 0}";
+}
+Blocking disallowed application: CoreServicesUIAgent
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: chronod
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: Spotlight
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: Revisual
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: Creative Cloud Interprocess Service
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: AquaAppearanceHelper
+Blocking disallowed application: DockHelper
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: PowerChime
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+Blocking disallowed application: storeuid
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: Siri
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: 
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: CoreLocationAgent
+Blocking disallowed application: AuthenticationServicesAgent
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: coreautha
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: studentd
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: com.apple.PressAndHold
+Blocking disallowed application: PDF Expert
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: nbagent
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: LookupViewService (Terminal)
+Blocking disallowed application: Family
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: Calendar
+Blocking disallowed application: Accessibility Services
+Making OpenAI API call with model: gpt-4
+Making OpenAI API call with model: gpt-4
+Making OpenAI API call with model: gpt-4
+Blocking disallowed application: CoreServicesUIAgent
+Making OpenAI API call with model: gpt-4
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: chronod
+Making OpenAI API call with model: gpt-4
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: UIKitSystem
+Making OpenAI API call with model: gpt-4
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: CursorUIViewService
+Making OpenAI API call with model: gpt-4
+Blocking disallowed application: Spotlight
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: Logi Options Daemon
+Making OpenAI API call with model: gpt-4
+Blocking disallowed application: Revisual
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: Creative Cloud Interprocess Service
+Making OpenAI API call with model: gpt-4
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: AquaAppearanceHelper
+Blocking disallowed application: DockHelper
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: PowerChime
+Making OpenAI API call with model: gpt-4
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+Blocking disallowed application: storeuid
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Making OpenAI API call with model: gpt-4
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: Siri
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: 
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: CoreLocationAgent
+Blocking disallowed application: AuthenticationServicesAgent
+Making OpenAI API call with model: gpt-4
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: coreautha
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: studentd
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: com.apple.PressAndHold
+Blocking disallowed application: PDF Expert
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: nbagent
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: LookupViewService (Terminal)
+Making OpenAI API call with model: gpt-4
+Blocking disallowed application: Family
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Making OpenAI API call with model: gpt-4
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: Calendar
+Blocking disallowed application: Accessibility Services
+Making OpenAI API call with model: gpt-4
+Making OpenAI API call with model: gpt-4
+Making OpenAI API call with model: gpt-4
+Making OpenAI API call with model: gpt-4
+Making OpenAI API call with model: gpt-4
+Making OpenAI API call with model: gpt-4
+Making OpenAI API call with model: gpt-4
+Making OpenAI API call with model: gpt-4
+Making OpenAI API call with model: gpt-4
+Making OpenAI API call with model: gpt-4
+Making OpenAI API call with model: gpt-4
+Making OpenAI API call with model: gpt-4
+Blocking disallowed application: CoreServicesUIAgent
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: chronod
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: Spotlight
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: Revisual
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: Creative Cloud Interprocess Service
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: AquaAppearanceHelper
+Blocking disallowed application: DockHelper
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: PowerChime
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+Blocking disallowed application: storeuid
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: Siri
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: 
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: CoreLocationAgent
+Blocking disallowed application: AuthenticationServicesAgent
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: coreautha
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: studentd
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: com.apple.PressAndHold
+Blocking disallowed application: PDF Expert
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: nbagent
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: LookupViewService (Terminal)
+Blocking disallowed application: Family
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: Calendar
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: CoreServicesUIAgent
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: chronod
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: Spotlight
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: Revisual
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: Creative Cloud Interprocess Service
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: AquaAppearanceHelper
+Blocking disallowed application: DockHelper
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: PowerChime
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+Blocking disallowed application: storeuid
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: Siri
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: 
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: CoreLocationAgent
+Blocking disallowed application: AuthenticationServicesAgent
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: coreautha
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: studentd
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: com.apple.PressAndHold
+Blocking disallowed application: PDF Expert
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: nbagent
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: LookupViewService (Terminal)
+Blocking disallowed application: Family
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: Calendar
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: CoreServicesUIAgent
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: chronod
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: Spotlight
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: Revisual
+Blocking disallowed application: OSDUIHelper
+Blocking disallowed application: Creative Cloud Interprocess Service
+Blocking disallowed application: Creative Cloud Core Service
+Blocking disallowed application: Creative Cloud Helper
+Blocking disallowed application: Adobe Crash Processor
+Blocking disallowed application: Adobe Content Synchronizer
+Blocking disallowed application: SoftwareUpdateNotificationManager
+Blocking disallowed application: AquaAppearanceHelper
+Blocking disallowed application: DockHelper
+Blocking disallowed application: UserNotificationCenter
+Blocking disallowed application: universalAccessAuthWarn
+Blocking disallowed application: PowerChime
+Blocking disallowed application: Accessibility Services
+Blocking disallowed application: SceneKitQLPreviewExtension (Finder)
+Blocking disallowed application: storeuid
+Blocking disallowed application: ShareSheetUI (Finder)
+Blocking disallowed application: WebThumbnailExtension Graphics and Media
+Blocking disallowed application: QLPreviewGenerationExtension (Finder)
+Blocking disallowed application: Siri
+Blocking disallowed application: SiriNCService
+Blocking disallowed application: 
+Blocking disallowed application: Keychain Circle Notification
+Blocking disallowed application: Control Center Helper
+Blocking disallowed application: Single Sign-On
+Blocking disallowed application: TextInputSwitcher
+Blocking disallowed application: CoreLocationAgent
+Blocking disallowed application: AuthenticationServicesAgent
+Blocking disallowed application: BackgroundTaskManagementAgent
+Blocking disallowed application: coreautha
+Blocking disallowed application: nsattributedstringagent
+Blocking disallowed application: studentd
+Blocking disallowed application: ThemeWidgetControlViewService (loginwindow)
+Blocking disallowed application: com.apple.PressAndHold
+Making OpenAI API call with model: gpt-3.5-turbo
+👀 Application activated: Calendar
+Blocking disallowed application: PDF Expert
+Making OpenAI API call with model: gpt-3.5-turbo
+👀 Application activated: TOME
+Blocking disallowed application: Open and Save Panel Service (PDF Expert)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (PDF Expert))
+Blocking disallowed application: LinkedNotesUIService
+Blocking disallowed application: nbagent
+Blocking disallowed application: FigmaAgent
+Blocking disallowed application: PDF Expert Networking
+Blocking disallowed application: IOUIAgent
+Blocking disallowed application: LookupViewService (Terminal)
+Blocking disallowed application: Family
+Blocking disallowed application: Google Chrome
+Blocking disallowed application: Google Chrome Helper (Plugin)
+Blocking disallowed application: Open and Save Panel Service (Google Chrome)
+Blocking disallowed application: QuickLookUIService (Open and Save Panel Service (Google Chrome))
+Blocking disallowed application: Calendar
+Blocking disallowed application: Accessibility Services
+Making OpenAI API call with model: gpt-3.5-turbo
+👀 Application activated: Calendar
+Making OpenAI API call with model: gpt-3.5-turbo
+👀 Application activated: Terminal
+Blocking disallowed application: CoreServicesUIAgent
+Blocking disallowed application: Control Strip
+Blocking disallowed application: WindowManager
+Blocking disallowed application: EmojiFunctionRowIM
+Blocking disallowed application: talagentd
+Blocking disallowed application: Notification Center
+Blocking disallowed application: chronod
+Blocking disallowed application: ViewBridgeAuxiliary
+Blocking disallowed application: Wi-Fi
+Blocking disallowed application: UIKitSystem
+Blocking disallowed application: Wallpaper
+Blocking disallowed application: CalendarWidgetExtension
+Blocking disallowed application: Dock
+Blocking disallowed application: Control Center
+Blocking disallowed application: SystemUIServer
+Blocking disallowed application: QuickLookUIService (Finder)
+Blocking disallowed application: Adobe Content Synchronizer Finder Extension
+Blocking disallowed application: CursorUIViewService
+Blocking disallowed application: Spotlight
+Blocking disallowed application: Dock Extra
+Blocking disallowed application: TextInputMenuAgent
+Blocking disallowed application: Battery Indicator
+Blocking disallowed application: StartUpHelper
+Blocking disallowed application: AirPlay Screen Mirroring
+Blocking disallowed application: Logi Options Daemon
+Blocking disallowed application: Revisual
+Blocking disallowed application: OSDUIHelper
