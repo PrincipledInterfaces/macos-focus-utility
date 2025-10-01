@@ -163,7 +163,7 @@ struct WorkshopView: View {
     }
     
     private var waveAnimationOverlay: some View {
-        SimpleRipple(center: waveCenter, isActive: showWaveAnimation)
+        GlassmorphicShockwave(center: waveCenter, isActive: showWaveAnimation)
     }
     
     private func updateAIAgentContext() {
