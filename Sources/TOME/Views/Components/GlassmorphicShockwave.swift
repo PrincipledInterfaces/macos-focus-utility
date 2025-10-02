@@ -4,11 +4,18 @@ import SwiftUI
 struct GlassmorphicShockwave: View {
     let center: CGPoint
     let isActive: Bool
+    let color: Color
 
     @State private var waveProgress: CGFloat = 0
     @State private var waveOpacity: Double = 1
     @State private var innerGlowScale: CGFloat = 1
     @State private var particleRotation: Double = 0
+
+    init(center: CGPoint, isActive: Bool, color: Color = .cyan) {
+        self.center = center
+        self.isActive = isActive
+        self.color = color
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -57,8 +64,8 @@ struct GlassmorphicShockwave: View {
                     RadialGradient(
                         gradient: Gradient(stops: [
                             .init(color: Color.white.opacity(waveOpacity * 0.4), location: 0.0),
-                            .init(color: Color.cyan.opacity(waveOpacity * 0.3), location: 0.3),
-                            .init(color: Color.blue.opacity(waveOpacity * 0.15), location: 0.6),
+                            .init(color: color.opacity(waveOpacity * 0.3), location: 0.3),
+                            .init(color: color.opacity(waveOpacity * 0.15), location: 0.6),
                             .init(color: Color.clear, location: 1.0)
                         ]),
                         center: .center,
@@ -81,8 +88,8 @@ struct GlassmorphicShockwave: View {
                 LinearGradient(
                     gradient: Gradient(colors: [
                         Color.white.opacity(ringOpacity),
-                        Color.cyan.opacity(ringOpacity * 0.6),
-                        Color.blue.opacity(ringOpacity * 0.3),
+                        color.opacity(ringOpacity * 0.6),
+                        color.opacity(ringOpacity * 0.3),
                         Color.clear
                     ]),
                     startPoint: .topLeading,
@@ -110,7 +117,7 @@ struct GlassmorphicShockwave: View {
                     RadialGradient(
                         gradient: Gradient(colors: [
                             Color.white.opacity(waveOpacity * 0.8),
-                            Color.cyan.opacity(waveOpacity * 0.5),
+                            color.opacity(waveOpacity * 0.5),
                             Color.clear
                         ]),
                         center: .center,
@@ -152,7 +159,7 @@ struct GlassmorphicShockwave: View {
                 RadialGradient(
                     gradient: Gradient(colors: [
                         Color.white.opacity(waveOpacity * 0.8),
-                        Color.cyan.opacity(waveOpacity * 0.4),
+                        color.opacity(waveOpacity * 0.4),
                         Color.clear
                     ]),
                     center: .center,

@@ -7,7 +7,10 @@ struct HomeView: View {
     @State private var selectedEnvironment: TOMEEnvironment = .planning
     @State private var rotationAngle: Double = 0
     @State private var isHovering = false
-    
+    @State private var showShockwave = false
+    @State private var shockwaveCenter: CGPoint = .zero
+    @State private var shockwaveColor: Color = .white
+
     private let environments: [TOMEEnvironment] = [.planning, .writerDesk, .workshop, .coffeeshop, .garden]
     
     var body: some View {
@@ -15,18 +18,25 @@ struct HomeView: View {
             // Pure black background with subtle breathing effect
             Color.black
                 .ignoresSafeArea(.all)
-            
+
             VStack(spacing: 0) {
                 Spacer()
-                
+
                 // Central door - the focus of the entire interface
                 centralDoor
-                
+
                 Spacer()
-                
+
                 // Minimal recent tasks at bottom
                 recentTasksRow
                     .padding(.bottom, 60)
+            }
+
+            // Shockwave animation overlay
+            if showShockwave {
+                GlassmorphicShockwave(center: shockwaveCenter, isActive: showShockwave, color: shockwaveColor)
+                    .opacity(0.5) // Half opacity for home screen
+                    .ignoresSafeArea(.all)
             }
         }
     }
@@ -157,7 +167,17 @@ struct HomeView: View {
             .onTapGesture {
                 let frame = geometry.frame(in: .global)
                 let center = CGPoint(x: frame.midX, y: frame.midY)
-                onEnvironmentSelected(selectedEnvironment, center)
+
+                // Set shockwave properties
+                shockwaveCenter = center
+                shockwaveColor = selectedEnvironment.primaryColor
+                showShockwave = true
+
+                // Transition to environment after wave expands
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                    onEnvironmentSelected(selectedEnvironment, center)
+                    showShockwave = false
+                }
             }
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedEnvironment)
         }
@@ -173,11 +193,25 @@ struct HomeView: View {
             
             HStack(spacing: 16) {
                 ForEach(currentState.projects.prefix(3)) { project in
-                    Button(action: {
-                        selectedEnvironment = project.environment
-                        // Use a default center position for recent tasks
-                        onEnvironmentSelected(project.environment, CGPoint(x: 400, y: 300))
-                    }) {
+                    GeometryReader { geometry in
+                        Button(action: {
+                            selectedEnvironment = project.environment
+
+                            // Get button center for shockwave
+                            let frame = geometry.frame(in: .global)
+                            let center = CGPoint(x: frame.midX, y: frame.midY)
+
+                            // Set shockwave properties
+                            shockwaveCenter = center
+                            shockwaveColor = project.environment.primaryColor
+                            showShockwave = true
+
+                            // Transition to environment after wave expands
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                                onEnvironmentSelected(project.environment, center)
+                                showShockwave = false
+                            }
+                        }) {
                         VStack(spacing: 4) {
                             ZStack {
                                 // Base icon with glassmorphic effects
@@ -206,8 +240,10 @@ struct HomeView: View {
                         }
                         .padding(.horizontal, 8)
                         .padding(.vertical, 6)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    .frame(width: 80, height: 60)
                 }
             }
         }
