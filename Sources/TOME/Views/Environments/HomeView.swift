@@ -10,6 +10,7 @@ struct HomeView: View {
     @State private var showShockwave = false
     @State private var shockwaveCenter: CGPoint = .zero
     @State private var shockwaveColor: Color = .white
+    @State private var iconScale: CGFloat = 1.0
 
     private let environments: [TOMEEnvironment] = [.planning, .writerDesk, .workshop, .coffeeshop, .garden]
     
@@ -157,6 +158,7 @@ struct HomeView: View {
                         .font(.tomeSmall())
                         .foregroundColor(.white.opacity(0.6))
                 }
+                .scaleEffect(iconScale)
             }
             .scaleEffect(isHovering ? 1.02 : 1.0)
             .onHover { hovering in
@@ -173,10 +175,20 @@ struct HomeView: View {
                 shockwaveColor = selectedEnvironment.primaryColor
                 showShockwave = true
 
+                // Animate icon scale during shockwave
+                withAnimation(.easeOut(duration: 1.8)) {
+                    iconScale = 1.3
+                }
+
                 // Transition to environment after wave expands
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
                     onEnvironmentSelected(selectedEnvironment, center)
                     showShockwave = false
+
+                    // Reset icon scale
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        iconScale = 1.0
+                    }
                 }
             }
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedEnvironment)

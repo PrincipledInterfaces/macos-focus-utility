@@ -7,6 +7,7 @@ struct WorkshopView: View {
     @State private var selectedTool: WorkshopTool? = nil
     @State private var showWaveAnimation = false
     @State private var waveCenter: CGPoint = .zero
+    @State private var waveColor: Color = .white
     @State private var terminalRef: TerminalEmulator?
     
     let onNavigateHome: () -> Void
@@ -85,22 +86,23 @@ struct WorkshopView: View {
     private func workshopToolIcon(tool: WorkshopTool, systemName: String, color: Color, glowIntensity: Double = 0.3) -> some View {
         GeometryReader { geometry in
             Button(action: {
-                // Capture the center point for wave animation
+                // Capture the center point and color for wave animation
                 let frame = geometry.frame(in: .global)
                 waveCenter = CGPoint(x: frame.midX, y: frame.midY)
-                
+                waveColor = color
+
                 print("🎯 Icon clicked at: \(waveCenter)")
                 print("🎯 Frame: \(frame)")
-                
+
                 // Start wave animation immediately
                 showWaveAnimation = true
-                
-                // Transition to tool after wave expands
+
+                // Transition to tool after wave expands and fades (1.8s animation)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
                     withAnimation(.easeInOut(duration: 0.3)) {
                         selectedTool = tool
                         showWaveAnimation = false
-                        
+
                         // Notify AI agent of tool selection
                         updateAIAgentContext()
                     }
@@ -163,7 +165,8 @@ struct WorkshopView: View {
     }
     
     private var waveAnimationOverlay: some View {
-        GlassmorphicShockwave(center: waveCenter, isActive: showWaveAnimation)
+        WorkshopShockwave(center: waveCenter, isActive: showWaveAnimation, color: waveColor)
+            .opacity(0.5)
     }
     
     private func updateAIAgentContext() {
@@ -271,7 +274,7 @@ struct CustomIDEView: View {
                             VSplitView {
                                 // Main editor area
                                 VStack(spacing: 0) {
-                                    // Editor tabs
+                                    // Editor tabs - fixed at top
                                     EditorTabBar(
                                         openFiles: ideManager.openFiles,
                                         selectedFile: $selectedFile,
@@ -282,12 +285,15 @@ struct CustomIDEView: View {
                                             }
                                         }
                                     )
-                                    
-                                    // Code editor
+                                    .frame(height: 40)
+                                    .frame(maxWidth: .infinity)
+
+                                    // Code editor - fills remaining space
                                     CodeEditor(
                                         file: selectedFile,
                                         ideManager: ideManager
                                     )
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                                 }
                                 .frame(minHeight: 300)
                                 
@@ -422,9 +428,15 @@ struct ProjectSelectorView: View {
                     
                     LazyVStack(spacing: 8) {
                         ForEach(recentProjects) { project in
-                            RecentProjectRow(project: project) {
-                                onProjectSelected(project.path)
-                            }
+                            RecentProjectRow(
+                                project: project,
+                                onSelect: {
+                                    onProjectSelected(project.path)
+                                },
+                                onRemove: {
+                                    removeProject(project)
+                                }
+                            )
                         }
                     }
                 }
@@ -473,16 +485,27 @@ struct ProjectSelectorView: View {
         }
     }
     
+    private func removeProject(_ project: RecentProject) {
+        recentProjects.removeAll { $0.id == project.id }
+
+        // Save to UserDefaults
+        if let data = try? JSONEncoder().encode(recentProjects) {
+            UserDefaults.standard.set(data, forKey: "recentProjects")
+        }
+
+        print("🗑️ Removed project from recent list: \(project.name)")
+    }
+
     private func saveRecentProject(path: String) {
         let projectName = (path as NSString).lastPathComponent
         let newProject = RecentProject(name: projectName, path: path, lastOpened: Date())
-        
+
         // Remove if already exists
         recentProjects.removeAll { $0.path == path }
-        
+
         // Add to beginning
         recentProjects.insert(newProject, at: 0)
-        
+
         // Keep only last 10
         recentProjects = Array(recentProjects.prefix(10))
         
@@ -548,46 +571,63 @@ struct RecentProject: Codable, Identifiable {
 struct RecentProjectRow: View {
     let project: RecentProject
     let onSelect: () -> Void
+    let onRemove: () -> Void
     @State private var isHovered = false
-    
+
     var body: some View {
-        Button(action: onSelect) {
-            HStack(spacing: 12) {
-                Image(systemName: "folder")
-                    .font(.system(size: 16))
-                    .foregroundColor(.purple.opacity(0.8))
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(project.name)
-                        .font(.tomeBodyMedium())
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    Text(project.path)
+        HStack(spacing: 0) {
+            Button(action: onSelect) {
+                HStack(spacing: 12) {
+                    Image(systemName: "folder")
+                        .font(.system(size: 16))
+                        .foregroundColor(.purple.opacity(0.8))
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(project.name)
+                            .font(.tomeBodyMedium())
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Text(project.path)
+                            .font(.tomeCaption())
+                            .foregroundColor(.white.opacity(0.6))
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    Spacer()
+
+                    Text(timeAgoString(from: project.lastOpened))
                         .font(.tomeCaption())
-                        .foregroundColor(.white.opacity(0.6))
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .foregroundColor(.white.opacity(0.5))
                 }
-                
-                Spacer()
-                
-                Text(timeAgoString(from: project.lastOpened))
-                    .font(.tomeCaption())
-                    .foregroundColor(.white.opacity(0.5))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(isHovered ? Color.purple.opacity(0.2) : Color(red: 0.1, green: 0.1, blue: 0.12))
-            .cornerRadius(8)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
-            )
+            .buttonStyle(PlainButtonStyle())
+
+            // Remove button (only visible on hover)
+            if isHovered {
+                Button(action: onRemove) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .padding(.trailing, 12)
+                .transition(.opacity)
+            }
         }
-        .buttonStyle(PlainButtonStyle())
+        .background(isHovered ? Color.purple.opacity(0.2) : Color(red: 0.1, green: 0.1, blue: 0.12))
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+        )
         .onHover { hovering in
-            isHovered = hovering
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
         }
     }
     
@@ -1014,6 +1054,7 @@ struct TerminalInterface: View {
                 .font(.system(size: 13, design: .monospaced))
                 .foregroundColor(.white)
                 .textFieldStyle(PlainTextFieldStyle())
+                .focusable(true)
                 .onKeyPress(.upArrow) {
                     if let cmd = terminal.previousCommand() {
                         commandInput = cmd
@@ -1029,6 +1070,11 @@ struct TerminalInterface: View {
                 .onSubmit {
                     terminal.executeCommand(commandInput)
                     commandInput = ""
+                }
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        NSApp.keyWindow?.makeFirstResponder(nil)
+                    }
                 }
         }
         .padding(16)
@@ -1899,6 +1945,15 @@ struct ProjectNodeView: View {
             .background(
                 selectedFile?.path == node.path ? Color.blue.opacity(0.3) : Color.clear
             )
+            .contextMenu {
+                if !node.isDirectory {
+                    Button(action: {
+                        deleteFile(at: node.path)
+                    }) {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+            }
             
             // Children (if directory is expanded)
             if node.isDirectory && isExpanded {
@@ -1914,6 +1969,24 @@ struct ProjectNodeView: View {
         }
     }
     
+    private func deleteFile(at path: String) {
+        do {
+            try FileManager.default.removeItem(atPath: path)
+
+            // Close the file if it's currently open
+            if selectedFile?.path == path {
+                selectedFile = nil
+            }
+
+            // Reload the project structure
+            ideManager.loadProject(at: ideManager.currentDirectory)
+
+            print("🗑️ Deleted file: \(path)")
+        } catch {
+            print("❌ Failed to delete file: \(error)")
+        }
+    }
+
     private func fileIcon(for fileName: String) -> String {
         let ext = (fileName as NSString).pathExtension.lowercased()
         switch ext {
@@ -2055,61 +2128,49 @@ struct CodeEditor: View {
                 .padding(.vertical, 12)
                 .background(Color.gray.opacity(0.1))
                 
-                // Code editor area with line numbers and autocomplete
-                HStack(spacing: 0) {
-                    // Line numbers
-                    ScrollView {
-                        VStack(alignment: .trailing, spacing: 0) {
-                            ForEach(Array(editedContent.components(separatedBy: "\n").enumerated()), id: \.offset) { index, _ in
-                                Text("\(index + 1)")
-                                    .font(.system(size: 13, design: .monospaced))
-                                    .foregroundColor(.white.opacity(0.4))
-                                    .frame(minWidth: 40, alignment: .trailing)
-                                    .frame(height: 18)
+                // Code editor area without line numbers (TextEditor scroll position cannot be reliably tracked)
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: $editedContent)
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundColor(.white)
+                        .background(.clear)
+                        .scrollContentBackground(.hidden)
+                        .focused($isEditorFocused)
+                        .focusable(true)
+                        .onKeyPress(.tab) {
+                            if !inlinePreview.isEmpty {
+                                acceptInlinePreview()
+                                return .handled
                             }
+                            return .ignored
                         }
-                        .padding(.trailing, 8)
-                    }
-                    .frame(width: 50)
-                    .background(Color(red: 0.1, green: 0.1, blue: 0.1))
-                    .scrollDisabled(true) // Prevent independent scrolling
-
-                    ZStack(alignment: .topLeading) {
-                        TextEditor(text: $editedContent)
-                            .font(.system(size: 13, design: .monospaced))
-                            .foregroundColor(.white)
-                            .background(.clear)
-                            .scrollContentBackground(.hidden)
-                            .focused($isEditorFocused)
-                            .onKeyPress(.tab) {
-                                if !inlinePreview.isEmpty {
-                                    acceptInlinePreview()
-                                    return .handled
-                                }
-                                return .ignored
-                            }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .onChange(of: editedContent) { _, newValue in
-                                hasUnsavedChanges = (newValue != file.content)
-                                updateAutocompleteSuggestions(for: newValue)
-                            }
-                            .onTapGesture {
-                                inlinePreview = ""
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .onChange(of: editedContent) { _, newValue in
+                            hasUnsavedChanges = (newValue != file.content)
+                            updateAutocompleteSuggestions(for: newValue)
+                        }
+                        .onTapGesture {
+                            inlinePreview = ""
+                            isEditorFocused = true
+                        }
+                        .onAppear {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                                 isEditorFocused = true
                             }
-                    
+                        }
+
                     // Inline preview overlay
                     if !inlinePreview.isEmpty {
                         VStack(alignment: .leading, spacing: 0) {
                             let textLines = editedContent.components(separatedBy: "\n")
-                            
+
                             ForEach(0..<textLines.count, id: \.self) { index in
                                 HStack(alignment: .top, spacing: 0) {
                                     // Make existing text invisible to align preview properly
                                     Text(textLines[index])
                                         .font(.system(size: 13, design: .monospaced))
                                         .foregroundColor(.clear)
-                                    
+
                                     // Show preview on the last line
                                     if index == textLines.count - 1 {
                                         Text(inlinePreview)
@@ -2117,7 +2178,7 @@ struct CodeEditor: View {
                                             .foregroundColor(.white.opacity(0.4))
                                             .italic()
                                     }
-                                    
+
                                     Spacer()
                                 }
                                 .frame(maxWidth: .infinity, minHeight: 18, alignment: .leading)
@@ -2127,8 +2188,8 @@ struct CodeEditor: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 8)
                     }
-                    }
                 }
+                .clipped()
                 .onAppear {
                     editedContent = file.content
                     hasUnsavedChanges = false
@@ -2920,6 +2981,7 @@ struct IDETerminalPanel: View {
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.white)
                     .textFieldStyle(PlainTextFieldStyle())
+                    .focusable(true)
                     .onKeyPress(.upArrow) {
                         if let cmd = terminal.previousCommand() {
                             commandInput = cmd
