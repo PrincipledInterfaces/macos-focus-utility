@@ -1,0 +1,2 @@
+- always run and test changes with sudo ./build.sh with password squidud1
+- do not add fallbacks unless specifically requested. If an AI feature is requested, use the OpenAI stuff, not a fake version

@@ -208,8 +208,8 @@ class TOMEState: ObservableObject {
     
     func completeTodo(_ id: UUID) {
         if let index = todos.firstIndex(where: { $0.id == id }) {
-            todos[index].isCompleted = true
-            todos[index].completedAt = Date()
+            todos[index].isCompleted.toggle()
+            todos[index].completedAt = todos[index].isCompleted ? Date() : nil
         }
     }
     

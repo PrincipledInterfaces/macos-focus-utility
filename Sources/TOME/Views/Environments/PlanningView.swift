@@ -113,6 +113,7 @@ struct PlanningView: View {
                             .foregroundColor(.white.opacity(0.6))
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .keyboardShortcut(.return, modifiers: [])
                     .disabled(isProcessingBrainDump)
                 }
             }
@@ -150,10 +151,13 @@ struct PlanningView: View {
                     )
                 }
             }
-            
+
             // Real AI Duration Learning section
             if !currentState.todos.filter({ $0.isCompleted }).isEmpty {
-                RealDurationLearningView(completedTodos: currentState.todos.filter { $0.isCompleted })
+                RealDurationLearningView(
+                    completedTodos: currentState.todos.filter { $0.isCompleted },
+                    aiService: aiService
+                )
             }
         }
     }
@@ -161,7 +165,7 @@ struct PlanningView: View {
     private var aiAssistantPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Clean header
-            Text("Assistant")
+            Text("Context")
                 .font(.tomeSubheading())
                 .foregroundColor(.white)
                 .padding(.horizontal, 40)
@@ -227,24 +231,27 @@ struct PlanningView: View {
             
             VStack(spacing: 8) {
                 ForEach([TOMEEnvironment.writerDesk, .workshop, .coffeeshop, .garden], id: \.self) { environment in
-                    HStack {
-                        Circle()
-                            .fill(environment == selectedEnvironment ? Color.white : Color.clear)
-                            .frame(width: 6, height: 6)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                            )
-                        
-                        Text(environment.displayName)
-                            .font(.tomeCaption())
-                            .foregroundColor(environment == selectedEnvironment ? .white : .white.opacity(0.6))
-                        
-                        Spacer()
-                    }
-                    .onTapGesture {
+                    Button(action: {
                         selectedEnvironment = environment
+                        onNavigateToEnvironment(environment)
+                    }) {
+                        HStack {
+                            Circle()
+                                .fill(environment == selectedEnvironment ? Color.white : Color.clear)
+                                .frame(width: 6, height: 6)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                )
+
+                            Text(environment.displayName)
+                                .font(.tomeCaption())
+                                .foregroundColor(environment == selectedEnvironment ? .white : .white.opacity(0.6))
+
+                            Spacer()
+                        }
                     }
+                    .buttonStyle(PlainButtonStyle())
                 }
             }
         }
@@ -264,20 +271,39 @@ struct PlanningView: View {
     
     private func processBrainDump() {
         guard !brainDumpText.isEmpty else { return }
-        
+
         isProcessingBrainDump = true
-        
-        // Use AI parsing directly - no manual fallback
+
+        // Use structured AI parsing for better metadata
         DispatchQueue.global(qos: .userInitiated).async {
-            self.aiService.parseNaturalLanguageTodos(input: self.brainDumpText) { result in
+            self.aiService.parseStructuredTodos(input: self.brainDumpText) { result in
                 DispatchQueue.main.async {
                     self.isProcessingBrainDump = false
-                    
+
                     switch result {
-                    case .success(let aiTodos):
-                        print("AI parsed \(aiTodos.count) todos: \(aiTodos)")
-                        for todoText in aiTodos {
-                            self.currentState.addTodo(todoText)
+                    case .success(let parsedTodos):
+                        print("AI parsed \(parsedTodos.count) structured todos: \(parsedTodos)")
+                        for parsed in parsedTodos {
+                            // Convert parsed priority string to enum
+                            let priority: Todo.Priority = {
+                                switch parsed.priority.lowercased() {
+                                case "high": return .high
+                                case "low": return .low
+                                default: return .medium
+                                }
+                            }()
+
+                            // Create todo with AI-determined metadata
+                            let todo = Todo(
+                                id: UUID(),
+                                text: parsed.text,
+                                isCompleted: false,
+                                estimatedDuration: TimeInterval(parsed.durationMinutes * 60),
+                                priority: priority,
+                                aiEnhanced: true,
+                                category: parsed.category
+                            )
+                            self.currentState.todos.append(todo)
                         }
                         self.brainDumpText = ""
                     case .failure(let error):
@@ -289,7 +315,7 @@ struct PlanningView: View {
                             .components(separatedBy: .newlines)
                             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                             .filter { !$0.isEmpty && $0.count > 3 }
-                        
+
                         for todoText in fallbackTodos {
                             self.currentState.addTodo(todoText)
                         }
@@ -414,10 +440,10 @@ struct EnhancedTodoRow: View {
                 Button(action: handleToggleComplete) {
                     Circle()
                         .fill(todo.isCompleted ? Color.white : Color.clear)
-                        .frame(width: 6, height: 6)
+                        .frame(width: 12, height: 12)
                         .overlay(
                             Circle()
-                                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                .stroke(Color.white.opacity(0.3), lineWidth: 1.5)
                         )
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -430,9 +456,9 @@ struct EnhancedTodoRow: View {
                             .strikethrough(todo.isCompleted)
                         
                         Spacer()
-                        
+
                         // AI estimated duration
-                        Text("~45m")
+                        Text(formatDuration(todo.estimatedDuration))
                             .font(.tomeTiny())
                             .foregroundColor(.white.opacity(0.4))
                             .padding(.horizontal, 6)
@@ -446,17 +472,17 @@ struct EnhancedTodoRow: View {
                     // Category/project tag
                     HStack(spacing: 4) {
                         Circle()
-                            .fill(Color.blue.opacity(0.6))
+                            .fill(categoryColor(todo.category).opacity(0.6))
                             .frame(width: 4, height: 4)
-                        
-                        Text("Work")
+
+                        Text(todo.category?.capitalized ?? "Uncategorized")
                             .font(.tomeTiny())
                             .foregroundColor(.white.opacity(0.5))
-                        
+
                         Spacer()
-                        
+
                         // Priority indicator
-                        if true { // todo.priority == .high
+                        if todo.priority == .high {
                             Image(systemName: "exclamationmark")
                                 .font(.custom("Helvetica Neue", size: 8).weight(.medium))
                                 .foregroundColor(.orange.opacity(0.7))
@@ -524,6 +550,35 @@ struct EnhancedTodoRow: View {
             // For now, just complete
         }
         onToggleComplete()
+    }
+
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let minutes = Int(duration / 60)
+        if minutes < 60 {
+            return "~\(minutes)m"
+        } else {
+            let hours = minutes / 60
+            let remainingMinutes = minutes % 60
+            if remainingMinutes == 0 {
+                return "~\(hours)h"
+            } else {
+                return "~\(hours)h \(remainingMinutes)m"
+            }
+        }
+    }
+
+    private func categoryColor(_ category: String?) -> Color {
+        guard let category = category?.lowercased() else { return .gray }
+        switch category {
+        case "work": return .blue
+        case "personal": return .purple
+        case "health": return .green
+        case "learning": return .cyan
+        case "creative": return .pink
+        case "social": return .orange
+        case "errands": return .yellow
+        default: return .gray
+        }
     }
 }
 
@@ -601,36 +656,90 @@ struct AIEstimateView: View {
 
 struct RealDurationLearningView: View {
     let completedTodos: [Todo]
-    
+    let aiService: OpenAIService
+
+    @State private var insights: String = ""
+    @State private var isAnalyzing = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Learning")
+            Text("Productivity Insights")
                 .font(.tomeCaptionMedium())
                 .foregroundColor(.white.opacity(0.6))
-            
+
             if completedTodos.isEmpty {
-                Text("Complete some todos to see learning patterns")
+                Text("Complete some todos to see AI insights")
                     .font(.tomeTiny())
                     .foregroundColor(.white.opacity(0.4))
             } else {
-                VStack(spacing: 4) {
+                VStack(alignment: .leading, spacing: 4) {
                     ForEach(completedTodos.prefix(2)) { todo in
                         HStack {
                             Text(String(todo.text.prefix(25)) + (todo.text.count > 25 ? "..." : ""))
                                 .font(.tomeTiny())
                                 .foregroundColor(.white.opacity(0.5))
-                            
+
                             Spacer()
-                            
-                            Text("Completed")
+
+                            Text("✓")
                                 .font(.tomeTiny())
                                 .foregroundColor(.green.opacity(0.6))
                         }
                     }
-                    
-                    Text("Building your patterns...")
-                        .font(.tomeTiny())
-                        .foregroundColor(.white.opacity(0.4))
+
+                    if isAnalyzing {
+                        HStack(spacing: 4) {
+                            ProgressView()
+                                .scaleEffect(0.5)
+                                .frame(width: 12, height: 12)
+                            Text("Analyzing patterns...")
+                                .font(.tomeTiny())
+                                .foregroundColor(.white.opacity(0.4))
+                        }
+                    } else if !insights.isEmpty {
+                        Text(insights)
+                            .font(.tomeTiny())
+                            .foregroundColor(.white.opacity(0.6))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+        .onAppear {
+            analyzePatterns()
+        }
+        .onChange(of: completedTodos.count) { _, _ in
+            analyzePatterns()
+        }
+    }
+
+    private func analyzePatterns() {
+        guard !completedTodos.isEmpty, !isAnalyzing else { return }
+
+        isAnalyzing = true
+
+        let taskSummaries = completedTodos.prefix(5).map { todo in
+            "- \(todo.text) (estimated: \(Int(todo.estimatedDuration/60))min)"
+        }.joined(separator: "\n")
+
+        let prompt = """
+        Based on these recently completed tasks:
+        \(taskSummaries)
+
+        Provide a brief 1-2 sentence insight about the user's productivity patterns or task completion habits. Be specific and actionable.
+        """
+
+        aiService.chatCompletion(
+            messages: [ChatMessage(role: "user", content: prompt)],
+            model: "gpt-3.5-turbo"
+        ) { result in
+            DispatchQueue.main.async {
+                isAnalyzing = false
+                switch result {
+                case .success(let response):
+                    insights = response.trimmingCharacters(in: .whitespacesAndNewlines)
+                case .failure:
+                    insights = "Keep completing tasks to build better insights."
                 }
             }
         }

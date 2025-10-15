@@ -914,6 +914,16 @@ class GlobalAIAgent: ObservableObject {
     
     private func getEnvironmentSpecificInstructions() -> String {
         switch currentEnvironment {
+        case .writerDesk:
+            return """
+
+            Writer's Desk Instructions:
+            - When generating writing content (templates, essays, documents), use the insert_text_to_writer function
+            - Focus on clarity, tone, and audience appropriateness
+            - For templates like MLA format, generate the COMPLETE formatted template
+            - Do NOT just explain how to format - GENERATE the actual formatted content
+            - Suggest structural improvements for better flow
+            """
         case .workshop:
             if let tool = currentWorkshopTool {
                 switch tool {
@@ -959,19 +969,11 @@ class GlobalAIAgent: ObservableObject {
             }
         case .planning:
             return """
-            
+
             Planning Environment Instructions:
             - Help break down abstract goals into specific, actionable tasks
             - Suggest realistic timeframes and priorities
             - Encourage regular review and adjustment of plans
-            """
-        case .writerDesk:
-            return """
-            
-            Writer's Desk Instructions:
-            - Provide specific writing examples and templates
-            - Focus on clarity, tone, and audience appropriateness
-            - Suggest structural improvements for better flow
             """
         case .garden:
             return """
@@ -1458,7 +1460,25 @@ class GlobalAIAgent: ObservableObject {
     
     /// Get available function definitions for AI
     private func getFunctionDefinitions() -> String {
-        if currentEnvironment == .workshop {
+        if currentEnvironment == .writerDesk {
+            return """
+            Available Functions:
+            - insert_text_to_writer(content=string): Insert text/template into the currently open document in Writer's Desk
+
+            CRITICAL WRITER'S DESK RULES:
+            1. When user asks for templates (MLA, APA, etc.), generate the FULL template using this function
+            2. When user asks for content generation, create the content using this function
+            3. Use \\n for newlines in the content
+            4. Always include ::END_CALL:: at the end of every function call
+            5. Generate COMPLETE, properly formatted content - not explanations
+
+            Examples:
+            [FUNCTION_CALL:insert_text_to_writer(content=[Your Name]\\n[Instructor Name]\\n[Course]\\n[Date]\\n\\n[Essay Title]\\n\\n[Introduction paragraph...]\\n\\nWorks Cited)::END_CALL::]
+
+            When user says "give me an MLA template", you MUST execute:
+            [FUNCTION_CALL:insert_text_to_writer(content=<full MLA formatted template>)::END_CALL::]
+            """
+        } else if currentEnvironment == .workshop {
             if currentWorkshopTool == .terminal {
                 return """
                 Available Functions:
@@ -1666,6 +1686,23 @@ class GlobalAIAgent: ObservableObject {
     /// Execute a specific function call
     private func executeFunctionCall(functionName: String, parameters: [String: String], completion: @escaping (String?) -> Void) {
         switch functionName {
+        case "insert_text_to_writer":
+            if let content = parameters["content"] {
+                // Unescape newlines for proper formatting
+                let formattedContent = content.replacingOccurrences(of: "\\n", with: "\n")
+
+                // Send notification to WriterDeskView to insert text
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("AIInsertTextToWriter"),
+                        object: formattedContent
+                    )
+                }
+                completion("Inserted content into document")
+            } else {
+                completion(nil)
+            }
+
         case "execute_terminal":
             if let command = parameters["command"] {
                 executeTerminalCommandWithAnimation(command: command)

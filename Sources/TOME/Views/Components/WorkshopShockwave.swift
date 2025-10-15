@@ -9,7 +9,6 @@ struct WorkshopShockwave: View {
     @State private var waveProgress: CGFloat = 0
     @State private var waveOpacity: Double = 1
     @State private var innerGlowScale: CGFloat = 1
-    @State private var particleRotation: Double = 0
 
     init(center: CGPoint, isActive: Bool, color: Color = .cyan) {
         self.center = center
@@ -125,11 +124,6 @@ struct WorkshopShockwave: View {
                 .blur(radius: 12)
                 .drawingGroup()
 
-            // Inner particles only (no outer particles for workshop)
-            ForEach(0..<12, id: \.self) { index in
-                particleView(index: index, distance: 100 + waveProgress * 200, size: 12, rotation: particleRotation)
-            }
-
             // Glassmorphic blur overlay (reduced blur radius)
             Circle()
                 .fill(Color.white.opacity(0.02))
@@ -141,31 +135,6 @@ struct WorkshopShockwave: View {
         }
     }
 
-    private func particleView(index: Int, distance: CGFloat, size: CGFloat, rotation: Double) -> some View {
-        let angle = Double(index) * .pi / (size > 10 ? 6 : 4) + rotation
-
-        return Circle()
-            .fill(
-                RadialGradient(
-                    gradient: Gradient(colors: [
-                        Color.white.opacity(waveOpacity * 0.8),
-                        color.opacity(waveOpacity * 0.4),
-                        Color.clear
-                    ]),
-                    center: .center,
-                    startRadius: 0,
-                    endRadius: size / 2
-                )
-            )
-            .frame(width: size, height: size)
-            .position(
-                x: center.x + cos(angle) * distance,
-                y: center.y + sin(angle) * distance
-            )
-            .blur(radius: 1.5)
-            .opacity(waveOpacity * 0.6)
-            .drawingGroup()
-    }
 
     private func startShockwave() {
         print("🌊 Starting glassmorphic shockwave animation at center: \(center)")
@@ -176,7 +145,6 @@ struct WorkshopShockwave: View {
             self.waveProgress = 0
             self.waveOpacity = 1
             self.innerGlowScale = 1
-            self.particleRotation = 0
 
             // Small delay before starting animations to ensure reset is complete
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
@@ -196,11 +164,6 @@ struct WorkshopShockwave: View {
                 withAnimation(.easeInOut(duration: 1.0)) {
                     self.innerGlowScale = 2.5
                 }
-
-                // Particle rotation for organic movement
-                withAnimation(.linear(duration: 2.0)) {
-                    self.particleRotation = .pi * 1.5
-                }
             }
         }
     }
@@ -209,6 +172,5 @@ struct WorkshopShockwave: View {
         waveProgress = 0
         waveOpacity = 1
         innerGlowScale = 1
-        particleRotation = 0
     }
 }

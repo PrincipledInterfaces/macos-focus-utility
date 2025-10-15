@@ -131,36 +131,36 @@ class OpenAIService: ObservableObject {
         completion: @escaping (Result<[String], Error>) -> Void
     ) {
         print("🧠 Starting AI todo parsing for input: '\(input)'")
-        
+
         guard !apiKey.isEmpty else {
             print("❌ Cannot parse todos: API key is missing")
             completion(.failure(OpenAIError.missingAPIKey))
             return
         }
-        
+
         print("✅ API key available, making OpenAI request...")
-        
+
         let systemPrompt = """
         You are a helpful assistant that parses natural language input into discrete todo items.
-        
+
         Parse the following input into separate, actionable todo items. Each todo should be:
         - Specific and actionable
         - A single task (not multiple tasks combined)
         - Clearly worded
-        
+
         Return only the todo items, one per line, without numbers or bullet points.
-        
+
         Example input: "I need to email John about the proposal and also check if the AWS bill is processed"
         Example output:
         Email John about the proposal
         Check if AWS bill is processed
         """
-        
+
         let messages = [
             ChatMessage(role: "system", content: systemPrompt),
             ChatMessage(role: "user", content: input)
         ]
-        
+
         chatCompletion(messages: messages) { result in
             switch result {
             case .success(let response):
@@ -171,6 +171,74 @@ class OpenAIService: ObservableObject {
                     .filter { !$0.isEmpty }
                 print("📝 Parsed todos: \(todos)")
                 completion(.success(todos))
+            case .failure(let error):
+                print("❌ OpenAI API failed: \(error)")
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func parseStructuredTodos(
+        input: String,
+        completion: @escaping (Result<[ParsedTodo], Error>) -> Void
+    ) {
+        print("🧠 Starting structured AI todo parsing for input: '\(input)'")
+
+        guard !apiKey.isEmpty else {
+            print("❌ Cannot parse todos: API key is missing")
+            completion(.failure(OpenAIError.missingAPIKey))
+            return
+        }
+
+        let systemPrompt = """
+        You are a helpful assistant that parses natural language input into structured todo items with metadata.
+
+        Parse the input into discrete todos. For each todo, provide:
+        - text: The todo description
+        - durationMinutes: Estimated time in minutes (realistic estimate based on task complexity)
+        - category: One of "work", "personal", "health", "learning", "creative", "social", "errands", "other"
+        - priority: One of "low", "medium", "high" based on urgency keywords
+
+        Return ONLY valid JSON array, no markdown formatting:
+        [{"text":"...", "durationMinutes":..., "category":"...", "priority":"..."}]
+
+        Examples:
+        Input: "Email John about proposal, workout for 30 min, read chapter 5"
+        Output: [{"text":"Email John about proposal","durationMinutes":15,"category":"work","priority":"medium"},{"text":"Workout for 30 minutes","durationMinutes":30,"category":"health","priority":"medium"},{"text":"Read chapter 5","durationMinutes":45,"category":"learning","priority":"low"}]
+        """
+
+        let messages = [
+            ChatMessage(role: "system", content: systemPrompt),
+            ChatMessage(role: "user", content: input)
+        ]
+
+        chatCompletion(messages: messages, model: "gpt-4") { result in
+            switch result {
+            case .success(let response):
+                print("🎉 OpenAI API success! Response: '\(response)'")
+
+                // Clean up response - remove markdown code blocks if present
+                let cleanedResponse = response
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .replacingOccurrences(of: "```json", with: "")
+                    .replacingOccurrences(of: "```", with: "")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+
+                guard let data = cleanedResponse.data(using: .utf8) else {
+                    print("❌ Failed to convert response to data")
+                    completion(.failure(OpenAIError.invalidResponse))
+                    return
+                }
+
+                do {
+                    let parsedTodos = try JSONDecoder().decode([ParsedTodo].self, from: data)
+                    print("📝 Parsed \(parsedTodos.count) structured todos")
+                    completion(.success(parsedTodos))
+                } catch {
+                    print("❌ JSON parsing failed: \(error)")
+                    print("❌ Response was: \(cleanedResponse)")
+                    completion(.failure(error))
+                }
             case .failure(let error):
                 print("❌ OpenAI API failed: \(error)")
                 completion(.failure(error))
@@ -406,4 +474,12 @@ struct InstalledApp {
     let name: String
     let bundleIdentifier: String?
     let icon: NSImage?
+}
+
+// Data model for structured todo parsing
+struct ParsedTodo: Codable {
+    let text: String
+    let durationMinutes: Int
+    let category: String
+    let priority: String
 }

@@ -11,6 +11,7 @@ struct HomeView: View {
     @State private var shockwaveCenter: CGPoint = .zero
     @State private var shockwaveColor: Color = .white
     @State private var iconScale: CGFloat = 1.0
+    @State private var doorwayExpansion: CGFloat = 1.0
 
     private let environments: [TOMEEnvironment] = [.planning, .writerDesk, .workshop, .coffeeshop, .garden]
     
@@ -35,9 +36,30 @@ struct HomeView: View {
 
             // Shockwave animation overlay
             if showShockwave {
-                GlassmorphicShockwave(center: shockwaveCenter, isActive: showShockwave, color: shockwaveColor)
-                    .opacity(0.5) // Half opacity for home screen
-                    .ignoresSafeArea(.all)
+                ZStack {
+                    GlassmorphicShockwave(center: shockwaveCenter, isActive: showShockwave, color: shockwaveColor)
+                        .opacity(0.5) // Half opacity for home screen
+
+                    // Expanding doorway rectangle animation
+                    RoundedRectangle(cornerRadius: 16 * doorwayExpansion)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(max(0, 1.0 - (doorwayExpansion - 1.0) / 12.0) * 0.9),
+                                    selectedEnvironment.primaryColor.opacity(max(0, 1.0 - (doorwayExpansion - 1.0) / 12.0) * 0.7)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 3
+                        )
+                        .frame(width: 200 * doorwayExpansion, height: 300 * doorwayExpansion)
+                        .position(shockwaveCenter)
+                        .shadow(color: selectedEnvironment.primaryColor.opacity(max(0, 1.0 - (doorwayExpansion - 1.0) / 12.0) * 0.9), radius: 20)
+                        .blur(radius: 0.5)
+                        .opacity(max(0, 1.0 - (doorwayExpansion - 1.0) / 12.0))
+                }
+                .ignoresSafeArea(.all)
             }
         }
     }
@@ -174,20 +196,27 @@ struct HomeView: View {
                 shockwaveCenter = center
                 shockwaveColor = selectedEnvironment.primaryColor
                 showShockwave = true
+                doorwayExpansion = 1.0
 
                 // Animate icon scale during shockwave
-                withAnimation(.easeOut(duration: 1.8)) {
+                withAnimation(.easeOut(duration: 2.5)) {
                     iconScale = 1.3
                 }
 
+                // Animate doorway expansion at the same time as shockwave - expand beyond screen
+                withAnimation(.easeOut(duration: 2.5)) {
+                    doorwayExpansion = 10.0  // Even larger to ensure it fills the screen
+                }
+
                 // Transition to environment after wave expands
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                     onEnvironmentSelected(selectedEnvironment, center)
                     showShockwave = false
 
-                    // Reset icon scale
+                    // Reset states
                     withAnimation(.easeOut(duration: 0.3)) {
                         iconScale = 1.0
+                        doorwayExpansion = 1.0
                     }
                 }
             }
@@ -217,11 +246,22 @@ struct HomeView: View {
                             shockwaveCenter = center
                             shockwaveColor = project.environment.primaryColor
                             showShockwave = true
+                            doorwayExpansion = 1.0
+
+                            // Animate doorway expansion
+                            withAnimation(.easeOut(duration: 2.5)) {
+                                doorwayExpansion = 10.0  // Even larger to ensure it fills the screen
+                            }
 
                             // Transition to environment after wave expands
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                                 onEnvironmentSelected(project.environment, center)
                                 showShockwave = false
+
+                                // Reset doorway
+                                withAnimation(.easeOut(duration: 0.3)) {
+                                    doorwayExpansion = 1.0
+                                }
                             }
                         }) {
                         VStack(spacing: 4) {

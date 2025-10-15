@@ -61,20 +61,25 @@ struct WorkshopView: View {
             Spacer()
             
             HStack(spacing: 120) {
-                // VSCode Icon
+                // VSCode Icon (square aspect ratio)
                 workshopToolIcon(
                     tool: .vscode,
                     systemName: "curlybraces.square.fill",
                     color: Color.blue,
-                    glowIntensity: 0.15  // Reduced glow
+                    glowIntensity: 0.08,  // Further reduced blur brightness
+                    iconWidth: 120,
+                    iconHeight: 120
                 )
-                
-                // Terminal Icon
+
+                // Terminal Icon (square aspect ratio to match IDE)
                 workshopToolIcon(
                     tool: .terminal,
-                    systemName: "terminal.fill",
+                    systemName: "square.fill",
+                    overlayIcon: "terminal.fill",
                     color: Color.green,
-                    glowIntensity: 0.15  // Reduced glow
+                    glowIntensity: 0.08,  // Further reduced blur brightness
+                    iconWidth: 120,
+                    iconHeight: 120
                 )
             }
             
@@ -83,7 +88,7 @@ struct WorkshopView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
-    private func workshopToolIcon(tool: WorkshopTool, systemName: String, color: Color, glowIntensity: Double = 0.3) -> some View {
+    private func workshopToolIcon(tool: WorkshopTool, systemName: String, overlayIcon: String? = nil, color: Color, glowIntensity: Double = 0.3, iconWidth: CGFloat = 120, iconHeight: CGFloat = 120) -> some View {
         GeometryReader { geometry in
             Button(action: {
                 // Capture the center point and color for wave animation
@@ -113,40 +118,49 @@ struct WorkshopView: View {
                     Image(systemName: systemName)
                         .font(.system(size: 80, weight: .medium))
                         .foregroundColor(color)
-                        // Multiple layered shadows for depth
+                        // Multiple layered shadows for depth (reduced white blur)
                         .shadow(color: color.opacity(glowIntensity), radius: 25, x: 0, y: 0) // Strong glow
                         .shadow(color: color.opacity(glowIntensity * 0.7), radius: 40, x: 0, y: 0) // Outer glow
-                        .shadow(color: .white.opacity(0.5), radius: 12, x: -6, y: -6) // Top-left highlight
-                        .shadow(color: .white.opacity(0.2), radius: 20, x: -10, y: -10) // Extended highlight
+                        .shadow(color: .white.opacity(0.2), radius: 12, x: -6, y: -6) // Reduced top-left highlight
+                        .shadow(color: .white.opacity(0.08), radius: 20, x: -10, y: -10) // Reduced extended highlight
                         .shadow(color: .black.opacity(0.6), radius: 12, x: 6, y: 6) // Bottom-right shadow
                         .shadow(color: .black.opacity(0.3), radius: 20, x: 10, y: 10) // Extended shadow
-                    
-                    // Primary glass reflection
+
+                    // Primary glass reflection (reduced)
                     Image(systemName: systemName)
                         .font(.system(size: 80, weight: .medium))
-                        .foregroundColor(.white.opacity(0.25))
+                        .foregroundColor(.white.opacity(0.12))
                         .blur(radius: 1.5)
                         .offset(x: -3, y: -3)
-                    
-                    // Secondary glass reflection for more depth
+
+                    // Secondary glass reflection for more depth (reduced)
                     Image(systemName: systemName)
                         .font(.system(size: 80, weight: .medium))
-                        .foregroundColor(.white.opacity(0.1))
+                        .foregroundColor(.white.opacity(0.05))
                         .blur(radius: 3)
                         .offset(x: -6, y: -6)
-                    
+
                     // Subtle color gradient overlay
                     Image(systemName: systemName)
                         .font(.system(size: 80, weight: .medium))
                         .foregroundColor(color.opacity(0.1))
                         .blur(radius: 4)
                         .offset(x: 2, y: 2)
+
+                    // Overlay terminal icon on square background if provided
+                    if let overlayIcon = overlayIcon {
+                        Image(systemName: overlayIcon)
+                            .font(.system(size: 50, weight: .medium))
+                            .foregroundColor(.white.opacity(0.9))
+                            .shadow(color: color.opacity(0.8), radius: 20, x: 0, y: 0)
+                            .shadow(color: .white.opacity(0.3), radius: 8, x: -4, y: -4)
+                    }
                 }
-                    .frame(width: 120, height: 120)
+                    .frame(width: iconWidth, height: iconHeight)
             }
             .buttonStyle(PlainButtonStyle())
         }
-        .frame(width: 120, height: 120)
+        .frame(width: iconWidth, height: iconHeight)
     }
     
     private var selectedToolView: some View {
@@ -1220,10 +1234,19 @@ class TerminalEmulator: ObservableObject {
         let errorPipe = Pipe()
 
         process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        process.arguments = ["-c", command]
+        // Use login shell to get full PATH environment
+        process.arguments = ["-l", "-c", command]
         process.currentDirectoryURL = URL(fileURLWithPath: currentDirectory)
         process.standardOutput = pipe
         process.standardError = errorPipe
+
+        // Inherit user's environment including PATH
+        var environment = ProcessInfo.processInfo.environment
+        // Also source the user's shell profile to get custom PATH additions
+        if let home = environment["HOME"] {
+            environment["HOME"] = home
+        }
+        process.environment = environment
 
         do {
             try process.run()

@@ -46,7 +46,8 @@ struct ContentView: View {
         case .planning:
             PlanningView(
                 currentState: tomeState,
-                onNavigateHome: { selectEnvironment(.home) }
+                onNavigateHome: { selectEnvironment(.home) },
+                onNavigateToEnvironment: { environment in selectEnvironment(environment) }
             )
         case .writerDesk:
             WriterDeskView(

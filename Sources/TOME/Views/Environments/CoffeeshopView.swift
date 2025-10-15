@@ -505,39 +505,12 @@ struct CoffeeshopView: View {
             currentArticles = articles
             print("🔍 Found \(articles.count) real articles for: \(query)")
         } catch {
-            print("❌ Real search failed, using generated content: \(error)")
-            // Fallback to enhanced generated articles
-            currentArticles = generateEnhancedArticles(for: query)
+            print("❌ Real search failed: \(error)")
+            // Show empty state - no fake articles
+            currentArticles = []
         }
     }
     
-    private func createBasicSearchResults(for query: String) -> [Article] {
-        // Create basic search results when API fails
-        return [
-            Article(
-                id: UUID(),
-                title: "Research: \(query)",
-                summary: "Academic and industry research on \(query)",
-                url: "https://scholar.google.com/scholar?q=\(query)",
-                timestamp: Date(),
-                content: "",
-                author: "Scholar",
-                readingTime: 0,
-                source: "Google Scholar"
-            ),
-            Article(
-                id: UUID(),
-                title: "Discussion: \(query)",
-                summary: "Community discussions about \(query)",
-                url: "https://www.reddit.com/search/?q=\(query)",
-                timestamp: Date(),
-                content: "",
-                author: "Reddit",
-                readingTime: 0,
-                source: "Reddit"
-            )
-        ]
-    }
     
     private func selectArticle(_ article: Article) {
         breadcrumbs.append(article.title)
@@ -577,25 +550,46 @@ struct CoffeeshopView: View {
     
     @MainActor
     private func loadArticleContent(for article: Article) async {
-        // Use generated detailed content to avoid any potential Safari launches
-        let detailedContent = generateDetailedContent(for: article)
-        
-        if let index = currentArticles.firstIndex(where: { $0.id == article.id }) {
-            currentArticles[index] = Article(
-                id: article.id,
-                title: article.title,
-                summary: article.summary,
-                url: article.url,
-                timestamp: article.timestamp,
-                content: detailedContent,
-                author: article.author ?? "Curated",
-                readingTime: estimateReadingTime(detailedContent),
-                source: article.source
-            )
-            showArticleReader(currentArticles[index])
+        // Fetch actual content from the URL
+        do {
+            print("📡 Fetching content from: \(article.url)")
+            let fetchedContent = try await WebContentFetcher.fetchArticleContent(from: article.url)
+
+            if let index = currentArticles.firstIndex(where: { $0.id == article.id }) {
+                currentArticles[index] = Article(
+                    id: article.id,
+                    title: article.title,
+                    summary: article.summary,
+                    url: article.url,
+                    timestamp: article.timestamp,
+                    content: fetchedContent,
+                    author: article.author ?? "Web",
+                    readingTime: estimateReadingTime(fetchedContent),
+                    source: article.source
+                )
+                showArticleReader(currentArticles[index])
+                print("✅ Loaded real content for: \(article.title) (\(fetchedContent.count) chars)")
+            }
+        } catch {
+            print("❌ Failed to fetch content: \(error), using fallback")
+            // Only use fallback if fetch fails
+            let detailedContent = generateDetailedContent(for: article)
+
+            if let index = currentArticles.firstIndex(where: { $0.id == article.id }) {
+                currentArticles[index] = Article(
+                    id: article.id,
+                    title: article.title,
+                    summary: article.summary,
+                    url: article.url,
+                    timestamp: article.timestamp,
+                    content: detailedContent,
+                    author: article.author ?? "Curated",
+                    readingTime: estimateReadingTime(detailedContent),
+                    source: article.source
+                )
+                showArticleReader(currentArticles[index])
+            }
         }
-        
-        print("📖 Loaded detailed content for: \(article.title)")
     }
     
     private func generateSimulatedContent(for article: Article) -> String {
@@ -664,45 +658,29 @@ struct CoffeeshopView: View {
     }
     
     private func loadInitialArticles() {
-        currentArticles = generateRecommendedArticles()
+        // Load real featured articles on startup using quality search
+        Task {
+            await loadFeaturedArticles()
+        }
     }
-    
-    private func generateRecommendedArticles() -> [Article] {
-        let allRecommendations = [
-            ("Deep Work Strategies", "Proven techniques for maintaining focus in a distracted world", "https://calnewport.com/deep-work/"),
-            ("Flow State Psychology", "Understanding the neuroscience behind optimal performance states", "https://www.researchgate.net/topic/Flow-Experience"),
-            ("Knowledge Management Systems", "Building effective systems for capturing and organizing insights", "https://roamresearch.com/"),
-            ("Serendipitous Discovery", "How unexpected connections drive innovation and creativity", "https://en.wikipedia.org/wiki/Serendipity"),
-            ("Information Architecture", "Designing systems for effective knowledge retrieval", "https://www.nngroup.com/articles/information-architecture-study-guide/"),
-            ("Cognitive Load Theory", "Optimizing mental resources for learning and problem-solving", "https://www.edutopia.org/cognitive-load-theory"),
-            ("Biomimetic Innovation", "Nature-inspired solutions to complex technological challenges", "https://biomimicry.org/"),
-            ("Network Effects", "Understanding how value increases with each additional user", "https://a16z.com/network-effects/"),
-            ("Attention Economy", "How digital platforms compete for our cognitive resources", "https://www.calnewport.com/blog/2016/09/20/attention-fragmentation/"),
-            ("Systems Thinking", "Holistic approaches to understanding complex problems", "https://systemsthinking.org/"),
-            ("Emergent Behavior", "How simple rules create complex patterns", "https://en.wikipedia.org/wiki/Emergence"),
-            ("Cognitive Biases", "Understanding systematic errors in thinking", "https://en.wikipedia.org/wiki/List_of_cognitive_biases"),
-            ("Information Theory", "The mathematical study of information transmission", "https://plato.stanford.edu/entries/information/"),
-            ("Memetic Evolution", "How ideas spread and evolve through culture", "https://www.richarddawkins.net/2014/02/what-is-a-meme/"),
-            ("Antifragility", "Systems that gain from disorder and stress", "https://www.fooled.com/antifragile-things-that-gain-from-disorder")
-        ]
-        
-        // Randomly select 4-6 articles each time
-        let selectedCount = Int.random(in: 4...6)
-        let selectedRecommendations = allRecommendations.shuffled().prefix(selectedCount)
-        
-        return selectedRecommendations.map { title, summary, url in
-            let source = CoffeeshopView.extractSourceFromURL(url)
-            return Article(
-                id: UUID(),
-                title: title,
-                summary: summary,
-                url: url,
-                timestamp: Date(),
-                content: "",
-                author: "Curated",
-                readingTime: Int.random(in: 3...12),
-                source: source
-            )
+
+    @MainActor
+    private func loadFeaturedArticles() async {
+        // Fetch real articles from quality sources on different topics
+        let featuredTopics = [
+            "deep work productivity",
+            "neuroscience focus",
+            "knowledge management",
+            "systems thinking"
+        ].randomElement() ?? "deep work productivity"
+
+        do {
+            let articles = try await RealArticleSearchService.searchArticles(query: featuredTopics)
+            currentArticles = articles
+            print("✨ Loaded \(articles.count) featured articles for: \(featuredTopics)")
+        } catch {
+            print("❌ Failed to load featured articles: \(error)")
+            currentArticles = []
         }
     }
     
@@ -744,83 +722,6 @@ struct CoffeeshopView: View {
         }
     }
     
-    private func generateArticles(for query: String) -> [Article] {
-        guard !query.isEmpty else { return [] }
-        
-        // Generate contextual, realistic articles based on the search query
-        let articleTemplates = createSmartArticleTemplates(for: query)
-        
-        return articleTemplates.map { template in
-            Article(
-                id: UUID(),
-                title: template.title,
-                summary: template.summary,
-                url: template.url,
-                timestamp: Date().addingTimeInterval(TimeInterval.random(in: -604800...0)), // Within last week
-                content: "", // Generated when viewed
-                author: template.author,
-                readingTime: Int.random(in: 4...15),
-                source: template.source
-            )
-        }
-    }
-    
-    private func generateEnhancedArticles(for query: String) -> [Article] {
-        return generateArticles(for: query)
-    }
-    
-    private func createSmartArticleTemplates(for query: String) -> [(title: String, summary: String, url: String, author: String, source: String)] {
-        let lowercaseQuery = query.lowercased()
-        var templates: [(String, String, String, String, String)] = []
-        
-        // Generate query-specific articles with realistic content
-        if lowercaseQuery.contains("ai") || lowercaseQuery.contains("artificial intelligence") || lowercaseQuery.contains("machine learning") {
-            templates += [
-                ("The Current State of AI Research in 2024", "A comprehensive overview of recent breakthroughs in artificial intelligence and their practical applications", "https://arxiv.org/abs/2024.ai.survey", "Dr. Sarah Chen, MIT", "arXiv"),
-                ("Ethics in AI Development: A Practical Framework", "Guidelines and best practices for ethical AI development in enterprise environments", "https://ethics.stanford.edu/ai-framework", "Stanford AI Ethics Lab", "Stanford"),
-                ("Large Language Models: Capabilities and Limitations", "An in-depth analysis of LLM performance across different domains and use cases", "https://openai.com/research/llm-analysis", "OpenAI Research Team", "OpenAI"),
-                ("AI in Healthcare: Real-World Case Studies", "How machine learning is transforming medical diagnosis and treatment planning", "https://nature.com/articles/ai-healthcare-2024", "Dr. Maria Rodriguez", "Nature Medicine")
-            ]
-        }
-        
-        if lowercaseQuery.contains("productivity") || lowercaseQuery.contains("focus") || lowercaseQuery.contains("deep work") {
-            templates += [
-                ("The Science Behind Flow States", "Neuroscience research on optimal performance and how to achieve flow consistently", "https://flow-research.org/neuroscience-flow", "Dr. Mihaly Csikszentmihalyi", "Flow Research"),
-                ("Digital Minimalism in Practice", "A 30-day experiment in reducing digital distractions and increasing focus", "https://calnewport.com/digital-minimalism-experiment", "Cal Newport", "Study Hacks"),
-                ("The Attention Restoration Theory", "How natural environments help restore cognitive resources and improve focus", "https://psych.umich.edu/attention-restoration", "Dr. Rachel Kaplan", "University of Michigan"),
-                ("Pomodoro vs. Time Blocking: Which Works Better?", "A data-driven comparison of popular productivity techniques", "https://productivity-lab.com/techniques-comparison", "James Clear", "Productivity Lab")
-            ]
-        }
-        
-        if lowercaseQuery.contains("climate") || lowercaseQuery.contains("environment") || lowercaseQuery.contains("sustainability") {
-            templates += [
-                ("Renewable Energy Breakthrough: Perovskite Solar Cells", "New material science advances promise more efficient and affordable solar panels", "https://nature.com/articles/perovskite-breakthrough", "Dr. Henry Snaith", "Nature Energy"),
-                ("Carbon Capture Technologies: State of the Art", "Comparing direct air capture methods and their potential for scale", "https://climate.mit.edu/carbon-capture-review", "MIT Climate Portal", "MIT"),
-                ("The Economics of Climate Action", "Cost-benefit analysis of various climate mitigation strategies", "https://stern-review-climate.org/economics-2024", "Nicholas Stern", "London School of Economics"),
-                ("Regenerative Agriculture: Beyond Carbon Neutral", "How farming practices can become carbon negative while improving yields", "https://rodale-institute.org/regenerative-study", "Rodale Institute", "Rodale Institute")
-            ]
-        }
-        
-        if lowercaseQuery.contains("technology") || lowercaseQuery.contains("innovation") || lowercaseQuery.contains("startup") {
-            templates += [
-                ("The State of Quantum Computing in 2024", "Progress, challenges, and realistic timelines for quantum advantage", "https://mit.edu/quantum-update-2024", "Prof. Peter Shor", "MIT Technology Review"),
-                ("Web3 Beyond the Hype: Real Use Cases", "Practical applications of blockchain technology in supply chain and identity", "https://a16z.com/web3-practical-applications", "Chris Dixon", "Andreessen Horowitz"),
-                ("The Rise of AI-First Companies", "How startups are building businesses around AI capabilities from day one", "https://firstround.com/ai-first-companies", "Josh Kopelman", "First Round Capital"),
-                ("Neuromorphic Computing: The Next Paradigm", "Brain-inspired computing architectures for ultra-low power AI", "https://intel.com/neuromorphic-research", "Intel Labs", "Intel Research")
-            ]
-        }
-        
-        // Add some general high-quality articles related to the query
-        templates += [
-            ("Deep Dive: Understanding \(query.capitalized)", "A comprehensive exploration of \(query) with expert insights and practical applications", "https://wikipedia.org/wiki/\(query.replacingOccurrences(of: " ", with: "_"))", "Wikipedia Contributors", "Wikipedia"),
-            ("Latest Research in \(query.capitalized)", "Recent academic papers and studies advancing our understanding of \(query)", "https://scholar.google.com/scholar?q=\(query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")", "Various Researchers", "Google Scholar"),
-            ("Industry Trends: \(query.capitalized) in 2024", "Current market trends, leading companies, and future predictions in \(query)", "https://mckinsey.com/insights/\(query)", "McKinsey & Company", "McKinsey"),
-            ("Practical Guide to \(query.capitalized)", "Step-by-step implementation strategies and real-world case studies", "https://hbr.org/topic/\(query)", "Harvard Business Review", "HBR")
-        ]
-        
-        // Randomly select 6-10 articles for variety
-        return templates.shuffled().prefix(Int.random(in: 6...10)).map { $0 }
-    }
     
     private func formatTime(_ timeInterval: TimeInterval) -> String {
         let minutes = Int(timeInterval) / 60
@@ -828,11 +729,11 @@ struct CoffeeshopView: View {
     }
     
     private var serendipityTopics: [String] {
-        if aiGeneratedSuggestions.isEmpty {
-            // Fallback suggestions while AI generates new ones
-            return ["Biomimicry", "Attention Economy", "Systems Thinking", "Network Effects"]
+        // Show AI-generated suggestions, but provide temporary fallback while AI loads
+        if aiGeneratedSuggestions.isEmpty && isGeneratingSerendipity {
+            return ["Loading..."]  // Show loading state
         }
-        return aiGeneratedSuggestions
+        return aiGeneratedSuggestions.isEmpty ? [] : aiGeneratedSuggestions
     }
     
     private func loadSavedReferences() {
@@ -1247,7 +1148,7 @@ struct ArticleCard: View {
     let article: Article
     let onSelect: () -> Void
     let onAddToNotes: () -> Void
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -1256,15 +1157,26 @@ struct ArticleCard: View {
                         .font(.tomeSubheading())
                         .foregroundColor(.white)
                         .lineLimit(2)
-                    
+
                     Text(article.summary)
                         .font(.tomeCaption())
                         .foregroundColor(.white.opacity(0.7))
                         .lineLimit(3)
+
+                    // Source indicator
+                    HStack(spacing: 4) {
+                        Image(systemName: "doc.text")
+                            .font(.system(size: 9))
+                            .foregroundColor(.orange.opacity(0.7))
+                        Text(article.source)
+                            .font(.tomeTiny())
+                            .foregroundColor(.orange.opacity(0.7))
+                    }
+                    .padding(.top, 4)
                 }
-                
+
                 Spacer()
-                
+
                 VStack(spacing: 8) {
                     Button(action: onSelect) {
                         Image(systemName: "arrow.up.right")
@@ -1272,7 +1184,7 @@ struct ArticleCard: View {
                             .foregroundColor(.orange)
                     }
                     .buttonStyle(PlainButtonStyle())
-                    
+
                     Button(action: onAddToNotes) {
                         Image(systemName: "plus.circle")
                             .font(.system(size: 12, weight: .medium))
@@ -1373,124 +1285,203 @@ struct Reference: Identifiable, Codable {
 
 class RealArticleSearchService {
     static func searchArticles(query: String) async throws -> [Article] {
-        // Try multiple sources and combine results
+        // Search multiple real APIs in parallel
+        async let wikipediaResults = searchWikipedia(query: query)
+        async let redditResults = searchReddit(query: query)
+        async let hackerNewsResults = searchHackerNews(query: query)
+
+        // Combine all results
         var allArticles: [Article] = []
-        
-        // Try DuckDuckGo first for general web results
+
         do {
-            let webArticles = try await searchWebArticles(query: query)
-            allArticles.append(contentsOf: webArticles)
+            allArticles.append(contentsOf: try await wikipediaResults)
         } catch {
-            print("Web search failed: \(error)")
+            print("⚠️ Wikipedia search failed: \(error)")
         }
-        
-        // Try academic search
+
         do {
-            let academicArticles = try await searchAcademicArticles(query: query)
-            allArticles.append(contentsOf: academicArticles)
+            allArticles.append(contentsOf: try await redditResults)
         } catch {
-            print("Academic search failed: \(error)")
+            print("⚠️ Reddit search failed: \(error)")
         }
-        
-        // If we have results, return them; otherwise throw error to trigger fallback
-        if !allArticles.isEmpty {
-            return allArticles.prefix(12).map { $0 } // Limit to reasonable number
-        } else {
+
+        do {
+            allArticles.append(contentsOf: try await hackerNewsResults)
+        } catch {
+            print("⚠️ HackerNews search failed: \(error)")
+        }
+
+        if allArticles.isEmpty {
             throw ArticleSearchError.networkError
         }
+
+        print("✅ Found \(allArticles.count) total articles from all sources")
+        return allArticles.prefix(15).map { $0 }
     }
     
-    private static func searchWebArticles(query: String) async throws -> [Article] {
-        // Use multiple real news and article sources instead of DuckDuckGo AI overviews
-        var allArticles: [Article] = []
-        
-        // Generate realistic news articles from credible sources
-        let newsArticles = generateRelevantNewsArticles(for: query)
-        allArticles.append(contentsOf: newsArticles)
-        
-        // Generate magazine-style articles
-        let magazineArticles = generateMagazineArticles(for: query)
-        allArticles.append(contentsOf: magazineArticles)
-        
-        return Array(allArticles.prefix(8))
-    }
-    
-    private static func generateRelevantNewsArticles(for query: String) -> [Article] {
-        let newsTemplates = [
-            ("Breaking: \(query.capitalized) developments reshape industry landscape", "Reuters", "https://reuters.com"),
-            ("Analysis: How \(query) impacts global markets", "Financial Times", "https://ft.com"),
-            ("\(query.capitalized) innovations drive technological advancement", "TechCrunch", "https://techcrunch.com"),
-            ("Scientists reveal new insights about \(query)", "Nature", "https://nature.com"),
-            ("\(query.capitalized) policy changes announced by government officials", "Washington Post", "https://washingtonpost.com"),
-            ("Study shows \(query) effects on society and culture", "The Guardian", "https://theguardian.com")
-        ]
-        
-        return newsTemplates.enumerated().map { index, template in
-            Article(
-                id: UUID(),
-                title: template.0,
-                summary: "Recent developments in \(query) have captured attention from experts and policymakers worldwide. This comprehensive analysis explores the implications and potential outcomes.",
-                url: "\(template.2)/\(query.replacingOccurrences(of: " ", with: "-"))-\(index)",
-                timestamp: Date().addingTimeInterval(TimeInterval.random(in: -86400...0)),
-                content: "",
-                author: template.1,
-                readingTime: Int.random(in: 6...15),
-                source: template.1
-            )
+    // MARK: - Wikipedia Search
+    private static func searchWikipedia(query: String) async throws -> [Article] {
+        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        let searchURL = "https://en.wikipedia.org/w/api.php?action=opensearch&search=\(encodedQuery)&limit=5&namespace=0&format=json"
+
+        guard let url = URL(string: searchURL) else {
+            throw ArticleSearchError.invalidURL
         }
-    }
-    
-    private static func generateMagazineArticles(for query: String) -> [Article] {
-        let magazineTemplates = [
-            ("The future of \(query): What experts predict", "Wired", "https://wired.com"),
-            ("\(query.capitalized) trends shaping the next decade", "Harvard Business Review", "https://hbr.org"),
-            ("Inside the \(query) revolution: A deep dive", "The Atlantic", "https://theatlantic.com"),
-            ("How \(query) is transforming modern life", "Scientific American", "https://scientificamerican.com")
-        ]
-        
-        return magazineTemplates.enumerated().map { index, template in
-            Article(
-                id: UUID(),
-                title: template.0,
-                summary: "An in-depth exploration of \(query) from industry leaders and thought leaders, examining current trends and future possibilities in this rapidly evolving field.",
-                url: "\(template.2)/\(query.replacingOccurrences(of: " ", with: "-"))-feature-\(index)",
-                timestamp: Date().addingTimeInterval(TimeInterval.random(in: -259200...0)),
-                content: "",
-                author: "Editorial Team",
-                readingTime: Int.random(in: 8...20),
-                source: template.1
-            )
+
+        var request = URLRequest(url: url)
+        request.setValue("TOME/1.0", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 10.0
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [Any],
+              json.count >= 4,
+              let titles = json[1] as? [String],
+              let descriptions = json[2] as? [String],
+              let urls = json[3] as? [String] else {
+            throw ArticleSearchError.parsingError
         }
-    }
-    
-    private static func searchAcademicArticles(query: String) async throws -> [Article] {
-        // For now, generate high-quality academic-style articles
-        // In the future, this could integrate with arXiv API or similar
-        let academicTemplates = createAcademicTemplates(for: query)
-        
-        return academicTemplates.map { template in
-            Article(
+
+        var articles: [Article] = []
+        for i in 0..<min(titles.count, 3) {  // Limit to 3 Wikipedia results
+            let title = titles[i]
+            let description = descriptions[i].isEmpty ? "Wikipedia article about \(title)" : descriptions[i]
+            let url = urls[i]
+
+            articles.append(Article(
                 id: UUID(),
-                title: template.title,
-                summary: template.summary,
-                url: template.url,
-                timestamp: Date().addingTimeInterval(TimeInterval.random(in: -1209600...0)), // Within last 2 weeks
+                title: title,
+                summary: description,
+                url: url,
+                timestamp: Date(),
                 content: "",
-                author: template.author,
-                readingTime: Int.random(in: 8...20),
-                source: template.source
-            )
+                author: "Wikipedia",
+                readingTime: 5,
+                source: "Wikipedia"
+            ))
         }
+
+        print("📚 Wikipedia: Found \(articles.count) articles")
+        return articles
     }
-    
-    private static func createAcademicTemplates(for query: String) -> [(title: String, summary: String, url: String, author: String, source: String)] {
-        let formattedQuery = query.capitalized
-        return [
-            ("A Systematic Review of \(formattedQuery): Current State and Future Directions", "Comprehensive analysis of recent research trends and methodological approaches in \(query)", "https://arxiv.org/abs/2024.\(query.replacingOccurrences(of: " ", with: "").lowercased()).review", "Dr. Research Team", "arXiv"),
-            ("Empirical Study on \(formattedQuery): Evidence and Implications", "Data-driven investigation into the practical applications and effectiveness of \(query)", "https://journals.nature.com/articles/\(query.replacingOccurrences(of: " ", with: "-"))-study", "Prof. Academic Author", "Nature"),
-            ("Theoretical Foundations of \(formattedQuery)", "Mathematical and conceptual frameworks underlying \(query) with formal proofs and derivations", "https://papers.acm.org/\(query.replacingOccurrences(of: " ", with: "-"))-theory", "Academic Consortium", "ACM Digital Library")
-        ]
+
+    // MARK: - Reddit Search
+    private static func searchReddit(query: String) async throws -> [Article] {
+        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        // Search relevant subreddits for quality content
+        let subreddits = ["programming", "science", "TrueReddit", "DepthHub", "AskScience"]
+        let subreddit = subreddits.randomElement() ?? "programming"
+        let searchURL = "https://www.reddit.com/r/\(subreddit)/search.json?q=\(encodedQuery)&restrict_sr=1&sort=top&limit=5"
+
+        guard let url = URL(string: searchURL) else {
+            throw ArticleSearchError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue("TOME/1.0", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 10.0
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let dataDict = json["data"] as? [String: Any],
+              let children = dataDict["children"] as? [[String: Any]] else {
+            throw ArticleSearchError.parsingError
+        }
+
+        var articles: [Article] = []
+        for child in children.prefix(3) {  // Limit to 3 Reddit results
+            guard let post = child["data"] as? [String: Any],
+                  let title = post["title"] as? String,
+                  var urlString = post["url"] as? String,
+                  let score = post["ups"] as? Int,
+                  let numComments = post["num_comments"] as? Int else {
+                continue
+            }
+
+            // Skip low-quality posts
+            if score < 10 { continue }
+
+            // For self posts, use Reddit link
+            if let isself = post["is_self"] as? Bool, isself {
+                if let permalink = post["permalink"] as? String {
+                    urlString = "https://www.reddit.com\(permalink)"
+                }
+            }
+
+            let selftext = (post["selftext"] as? String) ?? ""
+            let summary = selftext.isEmpty ? "Reddit discussion with \(numComments) comments" : String(selftext.prefix(200))
+
+            articles.append(Article(
+                id: UUID(),
+                title: title,
+                summary: summary,
+                url: urlString,
+                timestamp: Date(),
+                content: "",
+                author: "r/\(subreddit)",
+                readingTime: 5,
+                source: "Reddit"
+            ))
+        }
+
+        print("🤖 Reddit: Found \(articles.count) articles")
+        return articles
     }
+
+    // MARK: - HackerNews Search
+    private static func searchHackerNews(query: String) async throws -> [Article] {
+        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        let searchURL = "https://hn.algolia.com/api/v1/search?query=\(encodedQuery)&tags=story&hitsPerPage=5"
+
+        guard let url = URL(string: searchURL) else {
+            throw ArticleSearchError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue("TOME/1.0", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 10.0
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let hits = json["hits"] as? [[String: Any]] else {
+            throw ArticleSearchError.parsingError
+        }
+
+        var articles: [Article] = []
+        for hit in hits.prefix(3) {  // Limit to 3 HN results
+            guard let title = hit["title"] as? String,
+                  let points = hit["points"] as? Int else {
+                continue
+            }
+
+            // Skip low-quality posts
+            if points < 10 { continue }
+
+            let urlString = (hit["url"] as? String) ?? "https://news.ycombinator.com/item?id=\(hit["objectID"] as? String ?? "")"
+            let author = hit["author"] as? String ?? "HN User"
+            let numComments = hit["num_comments"] as? Int ?? 0
+
+            let summary = "HackerNews discussion with \(points) points and \(numComments) comments"
+
+            articles.append(Article(
+                id: UUID(),
+                title: title,
+                summary: summary,
+                url: urlString,
+                timestamp: Date(),
+                content: "",
+                author: author,
+                readingTime: 5,
+                source: "HackerNews"
+            ))
+        }
+
+        print("🔶 HackerNews: Found \(articles.count) articles")
+        return articles
+    }
+
 }
 
 // Keep the original for compatibility
@@ -1505,30 +1496,86 @@ class WebContentFetcher {
         guard let url = URL(string: urlString) else {
             throw ArticleSearchError.invalidURL
         }
-        
-        let (data, _) = try await URLSession.shared.data(from: url)
+
+        var request = URLRequest(url: url)
+        request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 15.0
+
+        let (data, _) = try await URLSession.shared.data(for: request)
         let html = String(data: data, encoding: .utf8) ?? ""
-        
+
         return extractTextFromHTML(html)
     }
-    
+
     private static func extractTextFromHTML(_ html: String) -> String {
-        let patterns = [
-            "<script[^>]*>[\\s\\S]*?</script>",
-            "<style[^>]*>[\\s\\S]*?</style>",
-            "<[^>]+>",
-            "&[^;]+;"
-        ]
-        
         var text = html
-        for pattern in patterns {
-            text = text.replacingOccurrences(of: pattern, with: " ", options: .regularExpression)
+
+        // Remove script and style tags with their content
+        let scriptPattern = "<script[^>]*>[\\s\\S]*?</script>"
+        let stylePattern = "<style[^>]*>[\\s\\S]*?</style>"
+        let commentPattern = "<!--[\\s\\S]*?-->"
+
+        text = text.replacingOccurrences(of: scriptPattern, with: "", options: .regularExpression)
+        text = text.replacingOccurrences(of: stylePattern, with: "", options: .regularExpression)
+        text = text.replacingOccurrences(of: commentPattern, with: "", options: .regularExpression)
+
+        // Try to extract main content from common article tags
+        let articlePatterns = [
+            "<article[^>]*>([\\s\\S]*?)</article>",
+            "<main[^>]*>([\\s\\S]*?)</main>",
+            "<div[^>]*class=\"[^\"]*content[^\"]*\"[^>]*>([\\s\\S]*?)</div>",
+            "<div[^>]*class=\"[^\"]*article[^\"]*\"[^>]*>([\\s\\S]*?)</div>"
+        ]
+
+        for pattern in articlePatterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
+               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+               match.numberOfRanges > 1,
+               let range = Range(match.range(at: 1), in: text) {
+                text = String(text[range])
+                break
+            }
         }
-        
+
+        // Remove all HTML tags
+        text = text.replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+
+        // Decode HTML entities
+        let entities: [(String, String)] = [
+            ("&amp;", "&"),
+            ("&lt;", "<"),
+            ("&gt;", ">"),
+            ("&quot;", "\""),
+            ("&#39;", "'"),
+            ("&nbsp;", " "),
+            ("&mdash;", "—"),
+            ("&ndash;", "–"),
+            ("&rsquo;", "'"),
+            ("&lsquo;", "'"),
+            ("&rdquo;", "\""),
+            ("&ldquo;", "\"")
+        ]
+
+        for (entity, replacement) in entities {
+            text = text.replacingOccurrences(of: entity, with: replacement)
+        }
+
+        // Clean up whitespace
         text = text.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
         text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        return text.isEmpty ? "Content could not be extracted from this URL." : text
+
+        // Return meaningful content or error message
+        if text.isEmpty || text.count < 100 {
+            return "Content could not be extracted from this URL. The page may require JavaScript or have restricted access."
+        }
+
+        // Limit to reasonable length (first ~5000 words)
+        let words = text.split(separator: " ")
+        if words.count > 5000 {
+            return words.prefix(5000).joined(separator: " ") + "\n\n[Content truncated for readability...]"
+        }
+
+        return text
     }
 }
 

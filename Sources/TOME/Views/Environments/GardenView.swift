@@ -20,6 +20,8 @@ struct GardenView: View {
     @State private var currentAIPrompt = ""
     @State private var aiResponse = ""
     @State private var isProcessingAI = false
+    @State private var breathingCycleCount = 0
+    @State private var sessionTimer: Timer?
     
     let onNavigateHome: () -> Void
     
@@ -74,11 +76,11 @@ struct GardenView: View {
         )
         .onAppear {
             startBreathingAnimation()
-            startAmbientSounds()
             generateIntrospectivePrompts()
         }
         .onDisappear {
             stopAmbientSounds()
+            sessionTimer?.invalidate()
         }
     }
     
@@ -234,7 +236,7 @@ struct GardenView: View {
             Circle()
                 .stroke(Color.green.opacity(0.2), lineWidth: 2)
                 .frame(width: 300, height: 300)
-            
+
             // Breathing circle
             Circle()
                 .fill(
@@ -252,18 +254,25 @@ struct GardenView: View {
                 .frame(width: 240, height: 240)
                 .scaleEffect(0.6 + sin(breathingPhase) * 0.4)
                 .animation(.easeInOut(duration: 4).repeatForever(), value: breathingPhase)
-            
+
             // Center guidance
             VStack(spacing: 8) {
                 Text(breathingInstruction)
                     .font(.system(size: 24, weight: .light, design: .default))
                     .foregroundColor(.white)
                     .animation(.easeInOut(duration: 2), value: breathingInstruction)
-                
+
                 Text(breathingSubtext)
                     .font(.system(size: 14, weight: .regular, design: .default))
                     .foregroundColor(.white.opacity(0.6))
                     .animation(.easeInOut(duration: 2), value: breathingSubtext)
+
+                if isSessionActive {
+                    Text("Cycle \(breathingCycleCount)")
+                        .font(.system(size: 12, weight: .regular, design: .default))
+                        .foregroundColor(.white.opacity(0.4))
+                        .padding(.top, 8)
+                }
             }
         }
     }
@@ -560,8 +569,9 @@ struct GardenView: View {
     }
     
     private func startBreathingAnimation() {
-        withAnimation(.linear(duration: 4).repeatForever(autoreverses: false)) {
-            breathingPhase = .pi * 2
+        // Continuously increment breathingPhase to create the cycling animation
+        Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { _ in
+            self.breathingPhase += 0.016 * (.pi * 2 / 4.0) // Complete cycle in 4 seconds
         }
     }
     
@@ -645,14 +655,23 @@ struct GardenView: View {
     private func startSession() {
         isSessionActive = true
         elapsedTime = 0
-        
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
-            if isSessionActive && elapsedTime < sessionDuration {
-                elapsedTime += 1
+        breathingCycleCount = 0
+
+        // Start calming nature sounds when session begins
+        startAmbientSounds()
+
+        sessionTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
+            if self.isSessionActive && self.elapsedTime < self.sessionDuration {
+                self.elapsedTime += 1
+
+                // Track breathing cycles (one cycle = ~19 seconds for 4-7-8 breathing)
+                if Int(self.elapsedTime) % 19 == 0 {
+                    self.breathingCycleCount += 1
+                }
             } else {
                 timer.invalidate()
-                if elapsedTime >= sessionDuration {
-                    endSession()
+                if self.elapsedTime >= self.sessionDuration {
+                    self.endSession()
                 }
             }
         }
@@ -660,6 +679,8 @@ struct GardenView: View {
     
     private func endSession() {
         isSessionActive = false
+        sessionTimer?.invalidate()
+        stopAmbientSounds()
         // Save reflection data to user state
         saveReflectionData()
     }
@@ -924,7 +945,7 @@ enum NatureSound: String, CaseIterable {
         }
     }
     
-    // Audio file names (these would be bundled with the app)
+    // Audio file names (calming sounds instead of ticking)
     var audioFileName: String {
         switch self {
         case .forestRain:

@@ -404,17 +404,9 @@ class ApplicationService: ObservableObject {
     }
     
     private func launchEnvironmentApplications(_ environment: TOMEEnvironment) {
-        guard let apps = environmentApps[environment] else { return }
-        
-        // Launch core apps for this environment
-        let coreApps = Array(apps.prefix(3)) // Launch first 3 apps
-        
-        for appName in coreApps {
-            // Launch apps immediately for responsiveness
-            DispatchQueue.global(qos: .background).async {
-                _ = self.launchApplication(appName)
-            }
-        }
+        // Disabled: Don't auto-launch applications
+        // Users should explicitly choose which apps to open
+        return
     }
     
     private func enforceApplicationPolicy() {
@@ -588,16 +580,9 @@ class ApplicationService: ObservableObject {
     // MARK: - Window Management
     
     func arrangeWindows(for environment: TOMEEnvironment) {
-        switch environment {
-        case .workshop:
-            arrangeWorkshopWindows()
-        case .writerDesk:
-            arrangeWriterDeskWindows()
-        case .coffeeshop:
-            arrangeCoffeeshopWindows()
-        default:
-            break
-        }
+        // Disabled: Don't auto-arrange windows or launch apps
+        // This was causing unwanted Safari and Calendar launches
+        return
     }
     
     private func arrangeWorkshopWindows() {
