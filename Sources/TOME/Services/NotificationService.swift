@@ -358,18 +358,25 @@ class NotificationService: NSObject, ObservableObject, UNUserNotificationCenterD
     }
     
     private func presentNotificationToUser(_ notification: TOMENotification) {
+        // UNUserNotificationCenter requires a valid app bundle
+        // Skip if not running in proper bundle (e.g., when running from .build directory)
+        guard Bundle.main.bundleIdentifier != nil else {
+            print("⚠️ Skipping notification presentation - not in app bundle")
+            return
+        }
+
         let content = UNMutableNotificationContent()
         content.title = "TOME: \(notification.source)"
         content.body = "\(notification.title)\n\(notification.content)"
         content.sound = .default
         content.badge = NSNumber(value: notificationCount)
-        
+
         let request = UNNotificationRequest(
             identifier: notification.id.uuidString,
             content: content,
             trigger: nil
         )
-        
+
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
                 print("Failed to present notification: \(error)")

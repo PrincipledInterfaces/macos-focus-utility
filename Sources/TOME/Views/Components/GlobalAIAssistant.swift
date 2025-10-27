@@ -5,7 +5,8 @@ struct GlobalAIAssistant: View {
     @State private var showChatWindow = false
     @State private var userMessage = ""
     @State private var isProcessing = false
-    
+    @State private var notificationObserver: NSObjectProtocol?
+
     var body: some View {
         VStack {
             HStack {
@@ -51,6 +52,30 @@ struct GlobalAIAssistant: View {
         }
         .padding(.trailing, 20)
         .animation(.easeInOut(duration: 0.3), value: showChatWindow)
+        .onAppear {
+            // Only setup observer if not already set up
+            if notificationObserver == nil {
+                print("🔧 GlobalAIAssistant: Setting up notification observer")
+                notificationObserver = NotificationCenter.default.addObserver(
+                    forName: NSNotification.Name("ToggleAIChat"),
+                    object: nil,
+                    queue: .main
+                ) { _ in
+                    print("🤖 Toggle AI notification received")
+                    showChatWindow.toggle()
+                    print("🤖 AI window now: \(showChatWindow)")
+                }
+            } else {
+                print("🔧 GlobalAIAssistant: Observer already exists, skipping setup")
+            }
+        }
+        .onDisappear {
+            print("🧹 GlobalAIAssistant: onDisappear called - removing notification observer")
+            if let observer = notificationObserver {
+                NotificationCenter.default.removeObserver(observer)
+                notificationObserver = nil
+            }
+        }
     }
     
     private var aiChatWindow: some View {

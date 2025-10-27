@@ -9,8 +9,12 @@ struct WorkshopView: View {
     @State private var waveCenter: CGPoint = .zero
     @State private var waveColor: Color = .white
     @State private var terminalRef: TerminalEmulator?
-    
+    @State private var hoveredTool: WorkshopTool? = nil
+    @State private var selectedIndex: Int = 0
+
     let onNavigateHome: () -> Void
+    private let tools: [WorkshopTool] = [.vscode, .terminal]
+    private let hardwareService = HardwareService.shared
     
     init(currentState: TOMEState, onNavigateHome: @escaping () -> Void = {}) {
         self.currentState = currentState
@@ -54,8 +58,114 @@ struct WorkshopView: View {
                 tomeState: currentState
             )
         }
+        .onAppear {
+            if selectedTool == nil {
+                setupHardwareHandling()
+            }
+        }
+        .onDisappear {
+            hardwareService.removeEventCallback(id: "workshopView")
+        }
+        .onChange(of: selectedTool) { _, newValue in
+            if newValue == nil {
+                // Re-setup hardware when returning to selection view
+                setupHardwareHandling()
+            } else {
+                // Clear hardware when tool is selected
+                hardwareService.removeEventCallback(id: "workshopView")
+            }
+        }
     }
-    
+
+    // Setup hardware event handling for workshop selection
+    private func setupHardwareHandling() {
+        // Set initial hover based on index
+        hoveredTool = tools[safe: selectedIndex]
+
+        hardwareService.onEvent(id: "workshopView") { [self] event in
+            guard selectedTool == nil else { return } // Only handle when in selection view
+
+            switch event {
+            case .encoderCW:
+                // Move selection right (with bounds checking)
+                if selectedIndex < tools.count - 1 {
+                    selectedIndex += 1
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        hoveredTool = tools[selectedIndex]
+                    }
+                }
+
+            case .encoderCCW:
+                // Move selection left (with bounds checking)
+                if selectedIndex > 0 {
+                    selectedIndex -= 1
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        hoveredTool = tools[selectedIndex]
+                    }
+                }
+
+            case .encoderClick:
+                // Trigger the selection
+                if let tool = hoveredTool {
+                    selectTool(tool)
+                }
+
+            default:
+                break
+            }
+        }
+    }
+
+    private func selectTool(_ tool: WorkshopTool, from position: CGPoint? = nil) {
+        // Calculate center point for wave - use provided position or calculate from tool
+        let center: CGPoint
+        if let pos = position {
+            center = pos
+        } else {
+            // Calculate icon position based on which tool it is
+            // Icons are centered on screen with 120pt spacing
+            guard let screenFrame = NSScreen.main?.frame else {
+                center = CGPoint(x: 400, y: 300)
+                waveCenter = center
+                waveColor = tool == .vscode ? .blue : .green
+                triggerToolAnimation(tool)
+                return
+            }
+
+            let screenMidX = screenFrame.midX
+            let screenMidY = screenFrame.midY
+            let iconSpacing: CGFloat = 120
+            let iconWidth: CGFloat = 120
+
+            // VSCode is on the left, Terminal is on the right
+            let xOffset = tool == .vscode ? -(iconSpacing / 2 + iconWidth / 2) : (iconSpacing / 2 + iconWidth / 2)
+            center = CGPoint(x: screenMidX + xOffset, y: screenMidY)
+        }
+
+        waveCenter = center
+        waveColor = tool == .vscode ? .blue : .green
+
+        print("🎯 Tool selected via encoder: \(tool.name)")
+        print("🌊 Wave origin: \(waveCenter)")
+
+        triggerToolAnimation(tool)
+    }
+
+    private func triggerToolAnimation(_ tool: WorkshopTool) {
+        // Trigger wave animation
+        withAnimation(.easeOut(duration: 1.5)) {
+            showWaveAnimation = true
+        }
+
+        // Select tool after animation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                selectedTool = tool
+            }
+            showWaveAnimation = false
+        }
+    }
+
     private var workshopSelectionView: some View {
         VStack(spacing: 0) {
             Spacer()
@@ -91,27 +201,18 @@ struct WorkshopView: View {
     private func workshopToolIcon(tool: WorkshopTool, systemName: String, overlayIcon: String? = nil, color: Color, glowIntensity: Double = 0.3, iconWidth: CGFloat = 120, iconHeight: CGFloat = 120) -> some View {
         GeometryReader { geometry in
             Button(action: {
-                // Capture the center point and color for wave animation
+                // Capture the center point for wave animation
                 let frame = geometry.frame(in: .global)
-                waveCenter = CGPoint(x: frame.midX, y: frame.midY)
-                waveColor = color
+                let position = CGPoint(x: frame.midX, y: frame.midY)
 
-                print("🎯 Icon clicked at: \(waveCenter)")
+                print("🎯 Icon clicked at: \(position)")
                 print("🎯 Frame: \(frame)")
 
-                // Start wave animation immediately
-                showWaveAnimation = true
+                // Call selectTool with the position
+                selectTool(tool, from: position)
 
-                // Transition to tool after wave expands and fades (1.8s animation)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        selectedTool = tool
-                        showWaveAnimation = false
-
-                        // Notify AI agent of tool selection
-                        updateAIAgentContext()
-                    }
-                }
+                // Notify AI agent of tool selection
+                updateAIAgentContext()
             }) {
                 ZStack {
                     // Base icon with enhanced glassmorphic effects
@@ -157,8 +258,36 @@ struct WorkshopView: View {
                     }
                 }
                     .frame(width: iconWidth, height: iconHeight)
+                    // Add glassmorphic outline when selected
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(
+                                LinearGradient(
+                                    colors: hoveredTool == tool ? [
+                                        Color.white.opacity(0.6),
+                                        color.opacity(0.8),
+                                        Color.white.opacity(0.4)
+                                    ] : [
+                                        Color.clear
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: hoveredTool == tool ? 2 : 0
+                            )
+                            .shadow(color: hoveredTool == tool ? color.opacity(0.6) : .clear, radius: 20)
+                            .frame(width: iconWidth + 20, height: iconHeight + 20)
+                    )
             }
             .buttonStyle(PlainButtonStyle())
+            .scaleEffect(hoveredTool == tool ? 1.08 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: hoveredTool)
+            .onHover { isHovering in
+                if isHovering {
+                    hoveredTool = tool
+                    selectedIndex = tools.firstIndex(of: tool) ?? selectedIndex
+                }
+            }
         }
         .frame(width: iconWidth, height: iconHeight)
     }
@@ -3488,5 +3617,11 @@ struct AutocompleteSuggestionsView: View {
         )
         .shadow(radius: 8)
         .frame(width: 200)
+    }
+}
+// MARK: - Array Extension for Safe Subscripting
+extension Array {
+    subscript(safe index: Index) -> Element? {
+        return indices.contains(index) ? self[index] : nil
     }
 }

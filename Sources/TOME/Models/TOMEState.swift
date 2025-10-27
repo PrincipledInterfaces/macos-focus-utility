@@ -42,36 +42,51 @@ class TOMEState: ObservableObject {
     }
     
     private func initializeServices() {
+        print("🚀 TOMEState: Starting service initialization")
+
         // Initialize OpenAI service first
         openAIService = OpenAIService()
-        
+        print("✅ TOMEState: OpenAI service initialized")
+
         // Initialize notification service with OpenAI dependency
         if let aiService = openAIService {
             notificationService = NotificationService(openAIService: aiService, tomeState: self)
+            print("✅ TOMEState: Notification service initialized")
         }
-        
+
         // Initialize application service
         applicationService = ApplicationService()
-        
+        print("✅ TOMEState: Application service initialized")
+
         // Initialize focus enforcement service with application service dependency
         if let appService = applicationService {
             focusEnforcementService = FocusEnforcementService(applicationService: appService)
+            print("✅ TOMEState: Focus enforcement service initialized")
         }
-        
+
         // Initialize project space service with application service dependency
         if let appService = applicationService {
             projectSpaceService = ProjectSpaceService(applicationService: appService)
+            print("✅ TOMEState: Project space service initialized")
         }
-        
+
         // Initialize global AI agent with OpenAI service dependency
         if let aiService = openAIService {
+            print("🤖 TOMEState: About to initialize GlobalAIAgent...")
             globalAIAgent = GlobalAIAgent(openAIService: aiService, tomeState: self)
+            print("✅ TOMEState: GlobalAIAgent initialized: \(globalAIAgent != nil)")
+        } else {
+            print("❌ TOMEState: OpenAI service is nil, cannot initialize GlobalAIAgent")
         }
-        
+
         // Initialize screen capture service for creative work monitoring
         if #available(macOS 12.3, *) {
             screenCaptureService = ScreenCaptureService()
+            print("✅ TOMEState: Screen capture service initialized")
         }
+
+        print("🏁 TOMEState: Service initialization complete")
+        print("   - globalAIAgent is nil? \(globalAIAgent == nil)")
     }
     
     private func setupProjectServiceBinding() {

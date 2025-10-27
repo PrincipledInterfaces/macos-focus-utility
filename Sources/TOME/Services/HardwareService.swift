@@ -4,36 +4,57 @@ import IOKit.serial
 import Combine
 import SwiftUI
 
+// Hardware event types
+enum HardwareEvent {
+    case encoderCW
+    case encoderCCW
+    case encoderClick
+    case buttonAI
+    case buttonHome
+    case buttonEject
+}
+
 class HardwareService: ObservableObject {
+    static let shared = HardwareService()
+
     @Published var isConnected = false
-    @Published var dialPosition: Double = 0.0
+    @Published var encoderPosition: Int = 0
     @Published var buttonStates: [Bool] = Array(repeating: false, count: 4)
     @Published var ledBrightness: Double = 0.5
-    
+
     private var serialPort: FileHandle?
     private var devicePath: String?
     private var cancellables = Set<AnyCancellable>()
     private var monitoringTimer: Timer?
-    
+    private var eventCallbacks: [String: (HardwareEvent) -> Void] = [:]
+
     // Protocol constants (matching Arduino firmware)
     private enum Command: UInt8 {
         case ping = 0x01
-        case getDial = 0x02
+        case getEncoder = 0x02
         case getButtons = 0x03
         case setLED = 0x04
-        case setLEDPattern = 0x05
-        case getStatus = 0x06
+        case getEvents = 0x05
     }
-    
+
     private enum Response: UInt8 {
         case pong = 0x81
-        case dialPosition = 0x82
-        case buttonStates = 0x83
+        case encoder = 0x82
+        case buttons = 0x83
         case ledAck = 0x84
-        case statusData = 0x86
+        case events = 0x85
+    }
+
+    private enum EventType: UInt8 {
+        case encoderCW = 0x01
+        case encoderCCW = 0x02
+        case encoderClick = 0x03
+        case buttonAI = 0x04
+        case buttonHome = 0x05
+        case buttonEject = 0x06
     }
     
-    init() {
+    private init() {
         startDeviceMonitoring()
     }
     
@@ -51,9 +72,11 @@ class HardwareService: ObservableObject {
                 self?.scanForDevices()
             }
         }
-        
-        // Initial scan
-        scanForDevices()
+
+        // Initial scan - async to not block init
+        DispatchQueue.global(qos: .background).async { [weak self] in
+            self?.scanForDevices()
+        }
     }
     
     private func stopDeviceMonitoring() {
@@ -63,17 +86,26 @@ class HardwareService: ObservableObject {
     
     private func scanForDevices() {
         guard !isConnected else { return }
-        
+
+        print("🔍 Scanning for TOME hardware devices...")
         let devicePaths = findArduinoDevices()
-        
+        print("🔍 Found \(devicePaths.count) potential devices: \(devicePaths)")
+
         for path in devicePaths {
+            print("🔌 Attempting connection to: \(path)")
             if attemptConnection(to: path) {
                 devicePath = path
                 isConnected = true
                 startDataPolling()
-                print("Connected to TOME hardware at: \(path)")
+                print("✅ Connected to TOME hardware at: \(path)")
                 break
+            } else {
+                print("❌ Failed to connect to: \(path)")
             }
+        }
+
+        if !isConnected {
+            print("⚠️ No TOME hardware devices found")
         }
     }
     
@@ -123,9 +155,9 @@ class HardwareService: ObservableObject {
             return false
         }
         
-        // Configure for 9600 baud, 8N1
-        cfsetispeed(&options, speed_t(B9600))
-        cfsetospeed(&options, speed_t(B9600))
+        // Configure for 115200 baud, 8N1 (matching ESP8266)
+        cfsetispeed(&options, speed_t(B115200))
+        cfsetospeed(&options, speed_t(B115200))
         
         options.c_cflag = tcflag_t(CS8 | CREAD | CLOCAL)
         options.c_iflag = tcflag_t(0)
@@ -228,14 +260,20 @@ class HardwareService: ObservableObject {
     }
     
     private func sendPing() -> Bool {
-        guard sendCommand(.ping) else { return false }
-        
+        print("  📤 Sending ping...")
+        guard sendCommand(.ping) else {
+            print("  ❌ Failed to send ping command")
+            return false
+        }
+
         usleep(50000) // Wait 50ms for response
-        
+
         if let (response, _) = readResponse(), response == .pong {
+            print("  ✅ Received pong response")
             return true
         }
-        
+
+        print("  ❌ No pong response received")
         return false
     }
     
@@ -245,10 +283,10 @@ class HardwareService: ObservableObject {
     }
     
     // MARK: - Data Polling
-    
+
     private func startDataPolling() {
-        // Poll hardware state every 500ms on background queue
-        Timer.publish(every: 0.5, on: RunLoop.main, in: .common)
+        // Poll hardware events every 100ms on background queue
+        Timer.publish(every: 0.1, on: RunLoop.main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
                 DispatchQueue.global(qos: .utility).async {
@@ -257,55 +295,76 @@ class HardwareService: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
+
     private func stopDataPolling() {
         cancellables.removeAll()
     }
-    
+
     private func pollHardwareState() {
         guard isConnected else { return }
-        
-        updateDialPosition()
-        updateButtonStates()
+
+        updateEvents()
     }
-    
-    private func updateDialPosition() {
-        guard sendCommand(.getDial) else { return }
-        
+
+    private func updateEvents() {
+        guard sendCommand(.getEvents) else { return }
+
         usleep(10000) // Wait 10ms for response
-        
+
         if let (response, data) = readResponse(),
-           response == .dialPosition,
-           data.count >= 2 {
-            let rawValue = UInt16(data[0]) << 8 | UInt16(data[1])
-            let normalizedValue = Double(rawValue) / 1023.0 // Assuming 10-bit ADC
-            
-            DispatchQueue.main.async {
-                self.dialPosition = normalizedValue
+           response == .events {
+            // Each event is 3 bytes: [type][value_hi][value_lo]
+            let eventCount = data.count / 3
+
+            for i in 0..<eventCount {
+                let offset = i * 3
+                guard offset + 2 < data.count else { continue }
+
+                let eventType = data[offset]
+                let value = Int16(bitPattern: UInt16(data[offset + 1]) << 8 | UInt16(data[offset + 2]))
+
+                processEvent(eventType: eventType, value: value)
+            }
+        }
+    }
+
+    private func processEvent(eventType: UInt8, value: Int16) {
+        guard let type = EventType(rawValue: eventType) else {
+            print("⚠️ Unknown event type: \(eventType)")
+            return
+        }
+
+        print("📡 Hardware event received: \(type) value: \(value)")
+
+        DispatchQueue.main.async {
+            switch type {
+            case .encoderCW:
+                self.encoderPosition = Int(value)
+                self.notifyEventCallbacks(.encoderCW)
+
+            case .encoderCCW:
+                self.encoderPosition = Int(value)
+                self.notifyEventCallbacks(.encoderCCW)
+
+            case .encoderClick:
+                print("🔘 Encoder click detected")
+                self.notifyEventCallbacks(.encoderClick)
+
+            case .buttonAI:
+                print("🤖 AI button event detected in HardwareService")
+                self.notifyEventCallbacks(.buttonAI)
+
+            case .buttonHome:
+                print("🏠 Home button event detected")
+                self.notifyEventCallbacks(.buttonHome)
+
+            case .buttonEject:
+                print("📱 Eject button event detected")
+                self.notifyEventCallbacks(.buttonEject)
             }
         }
     }
     
-    private func updateButtonStates() {
-        guard sendCommand(.getButtons) else { return }
-        
-        usleep(10000) // Wait 10ms for response
-        
-        if let (response, data) = readResponse(),
-           response == .buttonStates,
-           data.count >= 1 {
-            let buttonBits = data[0]
-            var newStates: [Bool] = []
-            
-            for i in 0..<4 {
-                newStates.append((buttonBits & (1 << i)) != 0)
-            }
-            
-            DispatchQueue.main.async {
-                self.buttonStates = newStates
-            }
-        }
-    }
     
     // MARK: - Hardware Control
     
@@ -320,54 +379,25 @@ class HardwareService: ObservableObject {
         }
     }
     
-    func setLEDPattern(_ pattern: LEDPattern) {
-        let patternData: [UInt8]
-        
-        switch pattern {
-        case .solid(let brightness):
-            patternData = [0x01, UInt8(brightness * 255)]
-        case .pulse(let speed):
-            patternData = [0x02, UInt8(speed * 255)]
-        case .breathe(let intensity):
-            patternData = [0x03, UInt8(intensity * 255)]
-        case .rainbow(let speed):
-            patternData = [0x04, UInt8(speed * 255)]
-        case .environmentColor(let environment):
-            let color = environment.primaryColor
-            patternData = [0x05, colorToRGB(color)]
-        }
-        
-        _ = sendCommand(.setLEDPattern, data: patternData)
-    }
-    
-    private func colorToRGB(_ color: Color) -> UInt8 {
-        // Simplified color to single byte conversion
-        // In a real implementation, you'd want full RGB values
-        switch color {
-        case .blue: return 0x01
-        case .green: return 0x02
-        case .purple: return 0x03
-        case .orange: return 0x04
-        default: return 0x00
-        }
-    }
     
     // MARK: - Event Handling
-    
-    func onDialChanged(_ handler: @escaping (Double) -> Void) {
-        $dialPosition
-            .removeDuplicates()
-            .sink(receiveValue: handler)
-            .store(in: &cancellables)
+
+    func onEvent(id: String, _ handler: @escaping (HardwareEvent) -> Void) {
+        eventCallbacks[id] = handler
     }
-    
-    func onButtonPressed(_ buttonIndex: Int, _ handler: @escaping () -> Void) {
-        $buttonStates
-            .map { $0[safe: buttonIndex] ?? false }
-            .removeDuplicates()
-            .filter { $0 } // Only trigger on press (true)
-            .sink { _ in handler() }
-            .store(in: &cancellables)
+
+    private func notifyEventCallbacks(_ event: HardwareEvent) {
+        for (_, callback) in eventCallbacks {
+            callback(event)
+        }
+    }
+
+    func removeEventCallback(id: String) {
+        eventCallbacks.removeValue(forKey: id)
+    }
+
+    func clearEventCallbacks() {
+        eventCallbacks.removeAll()
     }
     
     // MARK: - Utility Methods
@@ -396,12 +426,6 @@ enum LEDPattern {
 }
 
 // MARK: - Extensions
-
-extension Array {
-    subscript(safe index: Index) -> Element? {
-        return indices.contains(index) ? self[index] : nil
-    }
-}
 
 extension SwiftUI.Color {
     static func == (lhs: SwiftUI.Color, rhs: SwiftUI.Color) -> Bool {

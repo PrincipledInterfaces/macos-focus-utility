@@ -3,8 +3,9 @@ import SwiftUI
 struct HomeView: View {
     let onEnvironmentSelected: (TOMEEnvironment, CGPoint) -> Void
     @ObservedObject var currentState: TOMEState
-    
+
     @State private var selectedEnvironment: TOMEEnvironment = .planning
+    @State private var selectedIndex: Int = 0
     @State private var rotationAngle: Double = 0
     @State private var isHovering = false
     @State private var showShockwave = false
@@ -14,6 +15,7 @@ struct HomeView: View {
     @State private var doorwayExpansion: CGFloat = 1.0
 
     private let environments: [TOMEEnvironment] = [.planning, .writerDesk, .workshop, .coffeeshop, .garden]
+    private let hardwareService = HardwareService.shared
     
     var body: some View {
         ZStack {
@@ -62,8 +64,79 @@ struct HomeView: View {
                 .ignoresSafeArea(.all)
             }
         }
+        .onAppear {
+            setupHardwareHandling()
+        }
+        .onDisappear {
+            hardwareService.removeEventCallback(id: "homeView")
+        }
     }
-    
+
+    // Setup hardware event handling
+    private func setupHardwareHandling() {
+        hardwareService.onEvent(id: "homeView") { [self] event in
+            switch event {
+            case .encoderCW:
+                // Move selection right (with bounds checking)
+                if selectedIndex < environments.count - 1 {
+                    selectedIndex += 1
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        selectedEnvironment = environments[selectedIndex]
+                    }
+                }
+
+            case .encoderCCW:
+                // Move selection left (with bounds checking)
+                if selectedIndex > 0 {
+                    selectedIndex -= 1
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        selectedEnvironment = environments[selectedIndex]
+                    }
+                }
+
+            case .encoderClick:
+                // Trigger the selection
+                triggerEnvironmentSelection()
+
+            default:
+                break
+            }
+        }
+    }
+
+    private func triggerEnvironmentSelection() {
+        // Calculate center point for shockwave (use screen center)
+        let center = CGPoint(x: NSScreen.main?.frame.midX ?? 400, y: NSScreen.main?.frame.midY ?? 300)
+
+        // Set shockwave properties
+        shockwaveCenter = center
+        shockwaveColor = selectedEnvironment.primaryColor
+        showShockwave = true
+        doorwayExpansion = 1.0
+
+        // Animate icon scale during shockwave
+        withAnimation(.easeOut(duration: 2.5)) {
+            iconScale = 1.3
+        }
+
+        // Animate doorway expansion
+        withAnimation(.easeOut(duration: 2.5)) {
+            doorwayExpansion = 10.0
+        }
+
+        // Transition to environment after wave expands
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            onEnvironmentSelected(selectedEnvironment, center)
+            showShockwave = false
+
+            // Reset states
+            withAnimation(.easeOut(duration: 0.3)) {
+                iconScale = 1.0
+                doorwayExpansion = 1.0
+            }
+        }
+    }
+
     // Simplified central door - clean, Nothing-inspired aesthetic
     private var centralDoor: some View {
         VStack(spacing: 0) {
@@ -87,12 +160,15 @@ struct HomeView: View {
                             Circle()
                                 .stroke(Color.white.opacity(0.3), lineWidth: 1)
                         )
-                    
+
                     Text(environment.displayName)
                         .font(.tomeCaption())
                         .foregroundColor(environment == selectedEnvironment ? .white : .white.opacity(0.4))
                 }
+                .scaleEffect(environment == selectedEnvironment ? 1.1 : 1.0)
+                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: selectedEnvironment)
                 .onTapGesture {
+                    selectedIndex = index
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                         selectedEnvironment = environment
                     }

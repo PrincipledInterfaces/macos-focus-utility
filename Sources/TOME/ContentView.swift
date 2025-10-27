@@ -11,6 +11,9 @@ struct ContentView: View {
     @State private var animationOpacity: Double = 1.0
     @State private var showWaveAnimation = false
     @State private var waveCenter: CGPoint = .zero
+    @State private var showPhoneEjectMessage = false
+
+    private let hardwareService = HardwareService.shared
     
     var body: some View {
         GeometryReader { geometry in
@@ -22,8 +25,12 @@ struct ContentView: View {
         .ignoresSafeArea(.all)
         .overlay(waveAnimationOverlay)
         .overlay(globalAIOverlay)
+        .overlay(phoneEjectMessageOverlay)
         .animation(.spring(response: 0.6, dampingFraction: 0.8), value: animationScale)
         .animation(.easeInOut(duration: 0.4), value: animationOpacity)
+        .onAppear {
+            setupGlobalHardwareHandling()
+        }
     }
     
     @ViewBuilder
@@ -95,6 +102,38 @@ struct ContentView: View {
             if let globalAIAgent = tomeState.globalAIAgent {
                 GlobalAIAssistant(aiAgent: globalAIAgent)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var phoneEjectMessageOverlay: some View {
+        if showPhoneEjectMessage {
+            ZStack {
+                Color.black.opacity(0.5)
+                    .ignoresSafeArea(.all)
+
+                VStack(spacing: 12) {
+                    Image(systemName: "iphone.gen2.radiowaves.left.and.right")
+                        .font(.system(size: 48))
+                        .foregroundColor(.white)
+
+                    Text("Phone Eject Triggered")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(.white)
+
+                    Text("This feature will be implemented soon")
+                        .font(.system(size: 14))
+                        .foregroundColor(.white.opacity(0.7))
+                }
+                .padding(32)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(.ultraThinMaterial)
+                )
+                .shadow(color: .white.opacity(0.2), radius: 20)
+            }
+            .transition(.opacity)
+            .animation(.easeInOut(duration: 0.3), value: showPhoneEjectMessage)
         }
     }
     
@@ -196,6 +235,62 @@ struct ContentView: View {
         
         print("Environment switch initiated for: \(environment.displayName)")
     }
-    
+
+    // Setup global hardware button handling (AI, Home, Eject)
+    private func setupGlobalHardwareHandling() {
+        print("🔧 ContentView: Setting up global hardware handling")
+        print("   - hardwareService: \(hardwareService)")
+
+        hardwareService.onEvent(id: "contentView") { [self] event in
+            print("🎮 ContentView: Hardware event received: \(event)")
+
+            DispatchQueue.main.async {
+                switch event {
+                case .buttonAI:
+                    // Toggle AI chat window
+                    print("🎯 ContentView: AI button pressed - calling toggleAIChat()")
+                    toggleAIChat()
+
+                case .buttonHome:
+                    // Navigate home
+                    print("🏠 ContentView: Home button pressed")
+                    if currentEnvironment != .home {
+                        selectEnvironment(.home)
+                    }
+
+                case .buttonEject:
+                    // Show phone eject message
+                    print("📱 ContentView: Eject button pressed")
+                    showPhoneEjectMessage = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                        showPhoneEjectMessage = false
+                    }
+
+                default:
+                    // Encoder events are handled locally in HomeView and WorkshopView
+                    print("🔄 ContentView: Other event (encoder): \(event)")
+                    break
+                }
+            }
+        }
+
+        print("✅ ContentView: Global hardware handling setup complete")
+    }
+
+    private func toggleAIChat() {
+        // Toggle the AI chat window by calling the global AI agent
+        print("🔍 toggleAIChat called")
+        print("   - tomeState.globalAIAgent is nil? \(tomeState.globalAIAgent == nil)")
+
+        if tomeState.globalAIAgent != nil {
+            print("📮 Posting ToggleAIChat notification")
+            // The GlobalAIAssistant view manages its own showChatWindow state
+            // We trigger it via notification
+            NotificationCenter.default.post(name: NSNotification.Name("ToggleAIChat"), object: nil)
+        } else {
+            print("⚠️ globalAIAgent is nil, cannot toggle AI chat")
+        }
+    }
+
 }
 

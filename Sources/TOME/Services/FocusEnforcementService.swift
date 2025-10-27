@@ -389,142 +389,105 @@ class FocusEnforcementService: ObservableObject {
     }
     
     // MARK: - Notifications
-    
+
+    private func sendNotification(title: String, body: String, identifier: String) {
+        // UNUserNotificationCenter requires a valid app bundle
+        // Skip if not running in proper bundle (e.g., when running from .build directory)
+        guard Bundle.main.bundleIdentifier != nil else {
+            print("⚠️ Skipping notification: \(title) - not in app bundle")
+            return
+        }
+
+        let notification = UNMutableNotificationContent()
+        notification.title = title
+        notification.body = body
+        notification.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: identifier,
+            content: notification,
+            trigger: nil
+        )
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Failed to send notification: \(error)")
+            }
+        }
+    }
+
     private func showFocusModeNotification(_ mode: FocusMode, environment: TOMEEnvironment) {
-        let notification = UNMutableNotificationContent()
-        notification.title = "🎯 Focus Mode Activated"
-        notification.body = "\(mode.displayName) mode active for \(environment.displayName)"
-        notification.sound = .default
-        
-        let request = UNNotificationRequest(
-            identifier: "focus_mode_activated",
-            content: notification,
-            trigger: nil
+        sendNotification(
+            title: "🎯 Focus Mode Activated",
+            body: "\(mode.displayName) mode active for \(environment.displayName)",
+            identifier: "focus_mode_activated"
         )
-        
-        UNUserNotificationCenter.current().add(request)
     }
-    
+
     private func showFocusModeDeactivatedNotification() {
-        let notification = UNMutableNotificationContent()
-        notification.title = "🔓 Focus Mode Deactivated"
-        notification.body = "You can now access all applications"
-        notification.sound = .default
-        
-        let request = UNNotificationRequest(
-            identifier: "focus_mode_deactivated",
-            content: notification,
-            trigger: nil
+        sendNotification(
+            title: "🔓 Focus Mode Deactivated",
+            body: "You can now access all applications",
+            identifier: "focus_mode_deactivated"
         )
-        
-        UNUserNotificationCenter.current().add(request)
     }
-    
+
     private func showLenientBlockNotification(_ appName: String) {
-        let notification = UNMutableNotificationContent()
-        notification.title = "⚠️ Focus Reminder"
-        notification.body = "\(appName) was minimized to help you stay focused"
-        notification.sound = .default
-        
-        let request = UNNotificationRequest(
-            identifier: "lenient_block_\(appName)",
-            content: notification,
-            trigger: nil
+        sendNotification(
+            title: "⚠️ Focus Reminder",
+            body: "\(appName) was minimized to help you stay focused",
+            identifier: "lenient_block_\(appName)"
         )
-        
-        UNUserNotificationCenter.current().add(request)
     }
-    
+
     private func showMediumBlockNotification(_ appName: String) {
-        let notification = UNMutableNotificationContent()
-        notification.title = "🚫 Application Blocked"
-        notification.body = "\(appName) was closed to maintain focus"
-        notification.sound = .default
-        
-        let request = UNNotificationRequest(
-            identifier: "medium_block_\(appName)",
-            content: notification,
-            trigger: nil
+        sendNotification(
+            title: "🚫 Application Blocked",
+            body: "\(appName) was closed to maintain focus",
+            identifier: "medium_block_\(appName)"
         )
-        
-        UNUserNotificationCenter.current().add(request)
     }
-    
+
     private func showStrictBlockNotification(_ appName: String) {
-        let notification = UNMutableNotificationContent()
-        notification.title = "🔒 Strict Focus Enforcement"
-        notification.body = "\(appName) was force-closed. Focus mode is active."
-        notification.sound = .default
-        
-        let request = UNNotificationRequest(
-            identifier: "strict_block_\(appName)",
-            content: notification,
-            trigger: nil
+        sendNotification(
+            title: "🔒 Strict Focus Enforcement",
+            body: "\(appName) was force-closed. Focus mode is active.",
+            identifier: "strict_block_\(appName)"
         )
-        
-        UNUserNotificationCenter.current().add(request)
     }
-    
+
     private func showBreakReminderNotification() {
-        let notification = UNMutableNotificationContent()
-        notification.title = "⏰ Break Time"
-        notification.body = "You've been focused for an hour. Consider taking a break."
-        notification.sound = .default
-        
-        let request = UNNotificationRequest(
-            identifier: "break_reminder",
-            content: notification,
-            trigger: nil
+        sendNotification(
+            title: "⏰ Break Time",
+            body: "You've been focused for an hour. Consider taking a break.",
+            identifier: "break_reminder"
         )
-        
-        UNUserNotificationCenter.current().add(request)
     }
-    
+
     private func showExcessiveNonFocusWarning(duration: TimeInterval) {
         let minutes = Int(duration / 60)
-        let notification = UNMutableNotificationContent()
-        notification.title = "📱 Focus Alert"
-        notification.body = "You've been away from focused work for \(minutes) minutes"
-        notification.sound = .default
-        
-        let request = UNNotificationRequest(
-            identifier: "non_focus_warning",
-            content: notification,
-            trigger: nil
+        sendNotification(
+            title: "📱 Focus Alert",
+            body: "You've been away from focused work for \(minutes) minutes",
+            identifier: "non_focus_warning"
         )
-        
-        UNUserNotificationCenter.current().add(request)
     }
-    
+
     private func showOverrideGrantedNotification(_ appName: String, duration: TimeInterval) {
         let minutes = Int(duration / 60)
-        let notification = UNMutableNotificationContent()
-        notification.title = "✅ Focus Override Granted"
-        notification.body = "\(appName) is allowed for \(minutes) minutes"
-        notification.sound = .default
-        
-        let request = UNNotificationRequest(
-            identifier: "override_granted",
-            content: notification,
-            trigger: nil
+        sendNotification(
+            title: "✅ Focus Override Granted",
+            body: "\(appName) is allowed for \(minutes) minutes",
+            identifier: "override_granted"
         )
-        
-        UNUserNotificationCenter.current().add(request)
     }
-    
+
     private func showEnforcementEscalatedNotification(_ level: String) {
-        let notification = UNMutableNotificationContent()
-        notification.title = "🔥 Focus Enforcement Escalated"
-        notification.body = "Switched to \(level) enforcement due to multiple violations"
-        notification.sound = .default
-        
-        let request = UNNotificationRequest(
-            identifier: "enforcement_escalated",
-            content: notification,
-            trigger: nil
+        sendNotification(
+            title: "🔥 Focus Enforcement Escalated",
+            body: "Switched to \(level) enforcement due to multiple violations",
+            identifier: "enforcement_escalated"
         )
-        
-        UNUserNotificationCenter.current().add(request)
     }
     
     // MARK: - Settings Persistence
