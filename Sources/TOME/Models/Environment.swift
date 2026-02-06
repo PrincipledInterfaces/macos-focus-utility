@@ -27,7 +27,7 @@ enum TOMEEnvironment: String, CaseIterable, Identifiable, Codable {
         }
     }
     
-    var primaryColor: Color {
+    var accentColor: Color {
         switch self {
         case .home:
             return .white
@@ -40,8 +40,12 @@ enum TOMEEnvironment: String, CaseIterable, Identifiable, Codable {
         case .coffeeshop:
             return .orange
         case .garden:
-            return Color(.systemGreen)
+            return .green
         }
+    }
+
+    var primaryColor: Color {
+        return accentColor
     }
     
     var icon: String {

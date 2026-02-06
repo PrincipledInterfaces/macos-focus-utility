@@ -243,20 +243,30 @@ class TOMEState: ObservableObject {
     
     func switchToEnvironment(_ environment: TOMEEnvironment) {
         currentEnvironment = environment
-        
+
         // Update notification filtering immediately
         updateNotificationFiltering(for: environment)
-        
+
         // Activate focus enforcement for this environment
         activateFocusEnforcement(for: environment)
-        
+
         print("Switched to environment: \(environment.displayName)")
-        
+
+        // Update hardware LEDs with environment color
+        updateHardwareLEDs(for: environment)
+
         // Configure applications and windows in background to avoid UI delays
         DispatchQueue.global(qos: .userInitiated).async {
             self.applicationService?.setEnvironment(environment)
             self.applicationService?.arrangeWindows(for: environment)
         }
+    }
+
+    private func updateHardwareLEDs(for environment: TOMEEnvironment) {
+        print("🎨 Updating hardware LEDs for \(environment.displayName)")
+
+        // Send environment mode to hardware (colors are stored on ESP32)
+        HardwareService.shared.setEnvironment(environment)
     }
     
     // MARK: - Focus Enforcement

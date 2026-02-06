@@ -35,6 +35,10 @@ class HardwareService: ObservableObject {
         case getButtons = 0x03
         case setLED = 0x04
         case getEvents = 0x05
+        case getPhoneStatus = 0x06
+        case setEnvironment = 0x07
+        case ejectPhone = 0x08
+        case setMotorSpeed = 0x09
     }
 
     private enum Response: UInt8 {
@@ -43,6 +47,10 @@ class HardwareService: ObservableObject {
         case buttons = 0x83
         case ledAck = 0x84
         case events = 0x85
+        case phoneStatus = 0x86
+        case envAck = 0x87
+        case ejectAck = 0x88
+        case motorSpeedAck = 0x89
     }
 
     private enum EventType: UInt8 {
@@ -367,16 +375,41 @@ class HardwareService: ObservableObject {
     
     
     // MARK: - Hardware Control
-    
+
     func setLEDBrightness(_ brightness: Double) {
         let clampedBrightness = max(0.0, min(1.0, brightness))
         let brightnessValue = UInt8(clampedBrightness * 255)
-        
+
         if sendCommand(.setLED, data: [brightnessValue]) {
             DispatchQueue.main.async {
                 self.ledBrightness = clampedBrightness
             }
         }
+    }
+
+    func setEnvironment(_ environment: TOMEEnvironment) {
+        guard isConnected else {
+            print("⚠️ Hardware not connected, cannot set environment")
+            return
+        }
+
+        // Map environment to ID (0-5) matching ESP32's ENV_COLORS array
+        let envId: UInt8 = {
+            switch environment {
+            case .home: return 0
+            case .planning: return 1
+            case .writerDesk: return 2
+            case .workshop: return 3
+            case .coffeeshop: return 4
+            case .garden: return 5
+            }
+        }()
+
+        print("🎨 Setting environment to \(environment.displayName) (ID: \(envId))")
+
+        // Send just the environment mode ID
+        let success = sendCommand(.setEnvironment, data: [envId])
+        print(success ? "   ✅ Environment set successfully" : "   ❌ Environment set FAILED")
     }
     
     
