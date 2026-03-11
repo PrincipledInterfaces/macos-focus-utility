@@ -13,9 +13,12 @@ struct HomeView: View {
     @State private var shockwaveColor: Color = .white
     @State private var iconScale: CGFloat = 1.0
     @State private var doorwayExpansion: CGFloat = 1.0
+    @State private var showSettings = false
+    @State private var dialRotation: Double = 0
 
     private let environments: [TOMEEnvironment] = [.planning, .writerDesk, .workshop, .coffeeshop, .garden]
     private let hardwareService = HardwareService.shared
+    private let hudProjector = HUDProjectorService.shared
     
     var body: some View {
         ZStack {
@@ -24,6 +27,25 @@ struct HomeView: View {
                 .ignoresSafeArea(.all)
 
             VStack(spacing: 0) {
+                // Settings button in top right
+                HStack {
+                    Spacer()
+                    Button(action: { showSettings = true }) {
+                        Image(systemName: "gearshape")
+                            .font(.tomeSubheading())
+                            .foregroundColor(.white.opacity(0.6))
+                            .padding(12)
+                            .background(
+                                Circle()
+                                    .fill(Color.white.opacity(0.05))
+                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.trailing, 40)
+                    .padding(.top, 40)
+                }
+
                 Spacer()
 
                 // Central door - the focus of the entire interface
@@ -66,9 +88,20 @@ struct HomeView: View {
         }
         .onAppear {
             setupHardwareHandling()
+            updateHUDContent()
         }
         .onDisappear {
             hardwareService.removeEventCallback(id: "homeView")
+            hudProjector.hideContent()
+        }
+        .sheet(isPresented: $showSettings) {
+            TOMESettingsView()
+        }
+        .onChange(of: selectedEnvironment) { _, _ in
+            updateHUDContent()
+        }
+        .onChange(of: dialRotation) { _, _ in
+            updateHUDContent()
         }
     }
 
@@ -85,6 +118,9 @@ struct HomeView: View {
                     }
                 }
 
+                // Update dial rotation for HUD
+                dialRotation += 10.0
+
             case .encoderCCW:
                 // Move selection left (with bounds checking)
                 if selectedIndex > 0 {
@@ -94,6 +130,9 @@ struct HomeView: View {
                     }
                 }
 
+                // Update dial rotation for HUD
+                dialRotation -= 10.0
+
             case .encoderClick:
                 // Trigger the selection
                 triggerEnvironmentSelection()
@@ -102,6 +141,25 @@ struct HomeView: View {
                 break
             }
         }
+    }
+
+    // Update HUD projector content for home screen
+    private func updateHUDContent() {
+        guard hudProjector.isActive else { return }
+
+        let content = HUDContent(
+            type: .homeScreen(
+                selectedEnvironment: selectedEnvironment,
+                dialRotation: dialRotation
+            ),
+            position: .zero,
+            size: CGSize(
+                width: HUDProjectorSettings.shared.displayWidth,
+                height: HUDProjectorSettings.shared.displayHeight
+            )
+        )
+
+        hudProjector.showContent(content)
     }
 
     private func triggerEnvironmentSelection() {

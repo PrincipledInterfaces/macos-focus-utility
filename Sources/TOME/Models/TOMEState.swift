@@ -25,6 +25,7 @@ class TOMEState: ObservableObject {
     @Published var globalAIAgent: GlobalAIAgent?
     @Published var focusEnforcementService: FocusEnforcementService?
     @Published var screenCaptureService: ScreenCaptureService?
+    @Published var hudProjectorService: HUDProjectorService?
     
     private var cancellables = Set<AnyCancellable>()
     
@@ -83,6 +84,20 @@ class TOMEState: ObservableObject {
         if #available(macOS 12.3, *) {
             screenCaptureService = ScreenCaptureService()
             print("✅ TOMEState: Screen capture service initialized")
+        }
+
+        // Initialize light controller service (ambient ARGB strip)
+        _ = LightControllerService.shared
+        print("✅ TOMEState: Light controller service initialized")
+
+        // Initialize HUD projector service
+        hudProjectorService = HUDProjectorService.shared
+        print("✅ TOMEState: HUD projector service initialized")
+
+        // Initialize HUD if enabled
+        if HUDProjectorSettings.shared.isEnabled {
+            hudProjectorService?.initialize()
+            print("📺 TOMEState: HUD projector activated")
         }
 
         print("🏁 TOMEState: Service initialization complete")
@@ -255,6 +270,16 @@ class TOMEState: ObservableObject {
         // Update hardware LEDs with environment color
         updateHardwareLEDs(for: environment)
 
+        // Trigger HUD shockwave animation for environment transitions
+        if let hudService = hudProjectorService, hudService.isActive {
+            hudService.triggerShockwave(color: environment.primaryColor)
+
+            // Show environment info on HUD after shockwave
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                self.showEnvironmentInfoOnHUD(environment)
+            }
+        }
+
         // Configure applications and windows in background to avoid UI delays
         DispatchQueue.global(qos: .userInitiated).async {
             self.applicationService?.setEnvironment(environment)
@@ -262,11 +287,43 @@ class TOMEState: ObservableObject {
         }
     }
 
+    private func showEnvironmentInfoOnHUD(_ environment: TOMEEnvironment) {
+        guard let hudService = hudProjectorService, hudService.isActive else { return }
+
+        let settings = HUDProjectorSettings.shared
+        let frontEdgeCenter = settings.frontEdgeCenter
+        let angle = settings.frontEdgeAngle
+
+        // Position content perpendicular to front edge, away from TOME
+        let distance: CGFloat = 100
+        let perpAngle = angle - .pi / 2
+        let offsetX = cos(perpAngle) * distance
+        let offsetY = sin(perpAngle) * distance
+
+        let envInfo = "Entering \(environment.displayName) mode"
+        let content = HUDContent(
+            type: .environmentInfo(environment: environment, details: envInfo),
+            position: CGPoint(x: frontEdgeCenter.x + offsetX, y: frontEdgeCenter.y + offsetY),
+            size: CGSize(width: 400, height: 150),
+            rotation: angle
+        )
+
+        hudService.showContent(content)
+
+        // Hide after 3 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            hudService.hideContent()
+        }
+    }
+
     private func updateHardwareLEDs(for environment: TOMEEnvironment) {
         print("🎨 Updating hardware LEDs for \(environment.displayName)")
 
-        // Send environment mode to hardware (colors are stored on ESP32)
+        // Send environment mode to TOME controller (colors stored on-device)
         HardwareService.shared.setEnvironment(environment)
+
+        // Send gradient palette to ambient light strip
+        LightControllerService.shared.setEnvironment(environment)
     }
     
     // MARK: - Focus Enforcement

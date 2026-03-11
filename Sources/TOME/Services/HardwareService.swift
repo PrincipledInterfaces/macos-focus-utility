@@ -27,6 +27,8 @@ class HardwareService: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var monitoringTimer: Timer?
     private var eventCallbacks: [String: (HardwareEvent) -> Void] = [:]
+    private var isPolling = false
+    private let serialQueue = DispatchQueue(label: "com.tome.hardware.serial", qos: .userInteractive)
 
     // Protocol constants (matching Arduino firmware)
     private enum Command: UInt8 {
@@ -119,73 +121,153 @@ class HardwareService: ObservableObject {
     
     private func findArduinoDevices() -> [String] {
         var devices: [String] = []
-        
-        // Common Arduino USB device patterns
+
+        // Comprehensive list of USB serial device patterns
+        // Both cu (callout) and tty (terminal) versions
         let patterns = [
-            "/dev/cu.usbmodem*",    // Arduino Uno/Nano USB
-            "/dev/cu.usbserial*",   // Arduino with FTDI
-            "/dev/cu.wchusbserial*" // CH340 based Arduinos
+            "/dev/cu.usbmodem*",    // Arduino Uno/Nano USB (callout)
+            "/dev/tty.usbmodem*",   // Arduino Uno/Nano USB (terminal)
+            "/dev/cu.usbserial*",   // FTDI-based devices (callout)
+            "/dev/tty.usbserial*",  // FTDI-based devices (terminal)
+            "/dev/cu.wchusbserial*", // CH340 chips (callout)
+            "/dev/tty.wchusbserial*", // CH340 chips (terminal)
+            "/dev/cu.SLAB_USBtoUART*", // Silicon Labs CP210x (callout)
+            "/dev/tty.SLAB_USBtoUART*", // Silicon Labs CP210x (terminal)
         ]
-        
+
+        print("  🔎 Checking device patterns:")
         for pattern in patterns {
+            print("    Pattern: \(pattern)")
             let task = Process()
             task.launchPath = "/bin/sh"
             task.arguments = ["-c", "ls \(pattern) 2>/dev/null"]
-            
+
             let pipe = Pipe()
             task.standardOutput = pipe
             task.launch()
             task.waitUntilExit()
-            
+
             if let data = try? pipe.fileHandleForReading.readToEnd(),
                let output = String(data: data, encoding: .utf8) {
                 let foundDevices = output.trimmingCharacters(in: .whitespacesAndNewlines)
                     .components(separatedBy: .newlines)
                     .filter { !$0.isEmpty }
-                devices.append(contentsOf: foundDevices)
+                if !foundDevices.isEmpty {
+                    print("      ✅ Found: \(foundDevices)")
+                    devices.append(contentsOf: foundDevices)
+                } else {
+                    print("      ❌ No matches")
+                }
+            } else {
+                print("      ❌ No matches")
             }
         }
-        
+
+        // Fallback: search entire /dev directory for any USB devices
+        if devices.isEmpty {
+            print("  🔎 Fallback: Searching all /dev for USB devices")
+            let task = Process()
+            task.launchPath = "/bin/sh"
+            task.arguments = ["-c", "ls /dev/*usb* /dev/*USB* 2>/dev/null"]
+
+            let pipe = Pipe()
+            task.standardOutput = pipe
+            task.launch()
+            task.waitUntilExit()
+
+            if let data = try? pipe.fileHandleForReading.readToEnd(),
+               let output = String(data: data, encoding: .utf8) {
+                let foundDevices = output.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .components(separatedBy: .newlines)
+                    .filter { !$0.isEmpty && ($0.contains("cu.") || $0.contains("tty.")) }
+                if !foundDevices.isEmpty {
+                    print("      ✅ Found via fallback: \(foundDevices)")
+                    devices.append(contentsOf: foundDevices)
+                } else {
+                    print("      ❌ No USB devices found in /dev")
+                }
+            }
+        }
+
         return devices
     }
     
     private func attemptConnection(to devicePath: String) -> Bool {
+        print("  🔧 Opening device at path: \(devicePath)")
         guard let fileHandle = FileHandle(forUpdatingAtPath: devicePath) else {
+            print("    ❌ Failed to open file handle")
             return false
         }
-        
+
         // Configure serial port settings
         let fd = fileHandle.fileDescriptor
         var options = termios()
-        
+
         if tcgetattr(fd, &options) != 0 {
+            print("    ❌ Failed to get terminal attributes (errno: \(errno))")
             fileHandle.closeFile()
             return false
         }
-        
+
         // Configure for 115200 baud, 8N1 (matching ESP8266)
         cfsetispeed(&options, speed_t(B115200))
         cfsetospeed(&options, speed_t(B115200))
-        
+
         options.c_cflag = tcflag_t(CS8 | CREAD | CLOCAL)
         options.c_iflag = tcflag_t(0)
         options.c_oflag = tcflag_t(0)
         options.c_lflag = tcflag_t(0)
-        
+
         // Set read timeout
         options.c_cc.16 = 1  // VMIN
         options.c_cc.17 = 10 // VTIME (1 second timeout)
-        
+
         if tcsetattr(fd, TCSANOW, &options) != 0 {
+            print("    ❌ Failed to set terminal attributes (errno: \(errno))")
             fileHandle.closeFile()
             return false
         }
-        
+
+        print("    ✅ Serial port configured: 115200 8N1")
         serialPort = fileHandle
-        
-        // Test connection with ping
-        usleep(100000) // Wait 100ms for Arduino to initialize
-        return sendPing()
+
+        // Test connection with ping - try multiple times as device may need to settle
+        print("    🔄 Testing connection with ping (attempting 3 times)...")
+
+        // Clear any startup junk from the buffer
+        print("    🧹 Flushing startup data from buffer...")
+        usleep(200000) // Wait 200ms for any startup messages
+        tcflush(fd, TCIOFLUSH) // Flush both input and output buffers
+
+        for attempt in 1...3 {
+            usleep(150000) // Wait 150ms between attempts
+            print("      Attempt \(attempt)/3")
+
+            // Clear buffer before each ping
+            tcflush(fd, TCIFLUSH)
+
+            if sendPing() {
+                print("    ✅ Connection verified via ping/pong")
+                return true
+            }
+
+            // Read and display any junk in the buffer
+            let maxJunkBytes = 100
+            var junkBuffer = [UInt8](repeating: 0, count: maxJunkBytes)
+            let bytesRead = read(fd, &junkBuffer, maxJunkBytes)
+            if bytesRead > 0 {
+                let junkData = Array(junkBuffer.prefix(bytesRead))
+                print("        📋 Buffer contained \(bytesRead) unexpected bytes: \(junkData.prefix(20).map { String(format: "%02X", $0) }.joined(separator: " "))")
+                if let junkStr = String(bytes: junkData, encoding: .ascii) {
+                    print("        📋 As ASCII: \(junkStr.prefix(50))")
+                }
+            }
+        }
+
+        print("    ❌ All ping attempts failed")
+        serialPort = nil
+        fileHandle.closeFile()
+        return false
     }
     
     func disconnect() {
@@ -199,69 +281,108 @@ class HardwareService: ObservableObject {
     // MARK: - Communication Protocol
     
     private func sendCommand(_ command: Command, data: [UInt8] = []) -> Bool {
-        guard let port = serialPort else { return false }
-        
+        guard let port = serialPort else {
+            print("        ❌ No serial port available")
+            return false
+        }
+
         var packet = [UInt8]()
         packet.append(0xFF) // Start byte
         packet.append(command.rawValue)
         packet.append(UInt8(data.count))
         packet.append(contentsOf: data)
-        
+
         // Calculate checksum
         let checksum = packet[1...].reduce(0) { $0 ^ $1 }
         packet.append(checksum)
-        
+
         let packetData = Data(packet)
-        
+
         do {
             try port.write(contentsOf: packetData)
             return true
         } catch {
-            print("Failed to send command: \(error)")
+            print("❌ Hardware: failed to send command: \(error)")
             handleConnectionError()
             return false
         }
     }
     
     private func readResponse() -> (Response?, [UInt8])? {
-        guard let port = serialPort else { return nil }
-        
+        guard let port = serialPort else {
+            print("        ❌ No serial port available for reading")
+            return nil
+        }
+
         do {
-            // Read start byte
-            let startData = try port.read(upToCount: 1)
-            guard let startByte = startData?.first, startByte == 0xFF else { return nil }
-            
+            // Skip debug text and search for START_BYTE (0xFF)
+            // ESP32 DEBUG_MODE sends text like "LED: Env=0 Color=255,255,255"
+            var searchAttempts = 0
+            let maxSearchBytes = 500
+            var foundStart = false
+
+            while !foundStart && searchAttempts < maxSearchBytes {
+                let byteData = try port.read(upToCount: 1)
+                guard let byte = byteData?.first else {
+                    // Timeout - no data available
+                    return nil
+                }
+
+                if byte == 0xFF {
+                    // Found the start byte!
+                    foundStart = true
+                } else {
+                    // Skip this byte (debug text or garbage)
+                    searchAttempts += 1
+                }
+            }
+
+            if !foundStart {
+                print("        ❌ Could not find START_BYTE after \(maxSearchBytes) bytes")
+                return nil
+            }
+
             // Read command and length
             let headerData = try port.read(upToCount: 2)
-            guard let header = headerData, header.count == 2 else { return nil }
-            
+            guard let header = headerData, header.count == 2 else {
+                print("        ❌ Incomplete header (expected 2 bytes, got \(headerData?.count ?? 0))")
+                return nil
+            }
+
             let responseCode = header[0]
             let dataLength = header[1]
-            
+
             // Read data and checksum
             let remainingLength = Int(dataLength) + 1 // +1 for checksum
             let remainingData = try port.read(upToCount: remainingLength)
-            guard let remaining = remainingData, remaining.count == remainingLength else { return nil }
-            
+            guard let remaining = remainingData, remaining.count == remainingLength else {
+                print("        ❌ Incomplete packet (expected \(remainingLength) bytes, got \(remainingData?.count ?? 0))")
+                return nil
+            }
+
             let data = Array(remaining.prefix(Int(dataLength)))
             let receivedChecksum = remaining.last!
-            
+
             // Verify checksum
             var calculatedChecksum: UInt8 = responseCode ^ dataLength
             for byte in data {
                 calculatedChecksum ^= byte
             }
-            
+
             guard calculatedChecksum == receivedChecksum else {
-                print("Checksum mismatch")
+                print("        ❌ Checksum mismatch (expected \(String(format: "%02X", calculatedChecksum)), got \(String(format: "%02X", receivedChecksum)))")
                 return nil
             }
-            
-            guard let response = Response(rawValue: responseCode) else { return nil }
+
+            guard let response = Response(rawValue: responseCode) else {
+                print("        ❌ Unknown response code: \(String(format: "%02X", responseCode))")
+                return nil
+            }
+
             return (response, data)
-            
+
         } catch {
-            print("Failed to read response: \(error)")
+            print("        ❌ Failed to read response: \(error)")
             handleConnectionError()
             return nil
         }
@@ -293,18 +414,22 @@ class HardwareService: ObservableObject {
     // MARK: - Data Polling
 
     private func startDataPolling() {
-        // Poll hardware events every 100ms on background queue
-        Timer.publish(every: 0.1, on: RunLoop.main, in: .common)
-            .autoconnect()
-            .sink { [weak self] _ in
-                DispatchQueue.global(qos: .utility).async {
-                    self?.pollHardwareState()
-                }
-            }
-            .store(in: &cancellables)
+        isPolling = true
+        pollNext()
+    }
+
+    // Recursive asyncAfter loop — schedules the next poll only after the
+    // current one finishes, so there's no queue buildup and no RunLoop dependency.
+    private func pollNext() {
+        serialQueue.asyncAfter(deadline: .now() + .milliseconds(20)) { [weak self] in
+            guard let self, self.isPolling else { return }
+            if self.isConnected { self.updateEvents() }
+            self.pollNext()
+        }
     }
 
     private func stopDataPolling() {
+        isPolling = false
         cancellables.removeAll()
     }
 
@@ -317,21 +442,21 @@ class HardwareService: ObservableObject {
     private func updateEvents() {
         guard sendCommand(.getEvents) else { return }
 
-        usleep(10000) // Wait 10ms for response
+        usleep(5000) // 5ms — allows for USB serial round-trip latency
 
-        if let (response, data) = readResponse(),
-           response == .events {
-            // Each event is 3 bytes: [type][value_hi][value_lo]
+        if let (response, data) = readResponse(), response == .events {
             let eventCount = data.count / 3
-
             for i in 0..<eventCount {
                 let offset = i * 3
                 guard offset + 2 < data.count else { continue }
-
                 let eventType = data[offset]
                 let value = Int16(bitPattern: UInt16(data[offset + 1]) << 8 | UInt16(data[offset + 2]))
-
                 processEvent(eventType: eventType, value: value)
+            }
+            // ESP32 caps responses at 5 events — if we hit the cap there may
+            // be more queued, so drain immediately rather than waiting 20ms
+            if eventCount >= 5 {
+                updateEvents()
             }
         }
     }
@@ -341,8 +466,6 @@ class HardwareService: ObservableObject {
             print("⚠️ Unknown event type: \(eventType)")
             return
         }
-
-        print("📡 Hardware event received: \(type) value: \(value)")
 
         DispatchQueue.main.async {
             switch type {
@@ -388,12 +511,8 @@ class HardwareService: ObservableObject {
     }
 
     func setEnvironment(_ environment: TOMEEnvironment) {
-        guard isConnected else {
-            print("⚠️ Hardware not connected, cannot set environment")
-            return
-        }
+        guard isConnected else { return }
 
-        // Map environment to ID (0-5) matching ESP32's ENV_COLORS array
         let envId: UInt8 = {
             switch environment {
             case .home: return 0
@@ -405,11 +524,10 @@ class HardwareService: ObservableObject {
             }
         }()
 
-        print("🎨 Setting environment to \(environment.displayName) (ID: \(envId))")
-
-        // Send just the environment mode ID
-        let success = sendCommand(.setEnvironment, data: [envId])
-        print(success ? "   ✅ Environment set successfully" : "   ❌ Environment set FAILED")
+        // Dispatch onto the serial queue so this doesn't race with poll timer
+        serialQueue.async { [weak self] in
+            _ = self?.sendCommand(.setEnvironment, data: [envId])
+        }
     }
     
     

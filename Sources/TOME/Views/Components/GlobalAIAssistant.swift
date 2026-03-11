@@ -6,14 +6,19 @@ struct GlobalAIAssistant: View {
     @State private var userMessage = ""
     @State private var isProcessing = false
     @State private var notificationObserver: NSObjectProtocol?
+    @ObservedObject private var hudSettings = HUDProjectorSettings.shared
+    @ObservedObject private var hudService = HUDProjectorService.shared
 
     var body: some View {
         VStack {
             HStack {
                 Spacer()
-                
+
                 // AI Assistant Button
-                Button(action: { showChatWindow.toggle() }) {
+                Button(action: {
+                    showChatWindow.toggle()
+                    updateHUDChat()
+                }) {
                     HStack(spacing: 4) {
                         Image(systemName: showChatWindow ? "brain.head.profile.fill" : "brain.head.profile")
                             .font(.system(size: 14, weight: .medium))
@@ -43,7 +48,8 @@ struct GlobalAIAssistant: View {
                 .keyboardShortcut("a", modifiers: [.command])
             }
             
-            if showChatWindow {
+            // Only show in-app chat window if HUD is NOT enabled
+            if showChatWindow && !shouldUseHUD {
                 aiChatWindow
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
@@ -63,6 +69,7 @@ struct GlobalAIAssistant: View {
                 ) { _ in
                     print("🤖 Toggle AI notification received")
                     showChatWindow.toggle()
+                    updateHUDChat()
                     print("🤖 AI window now: \(showChatWindow)")
                 }
             } else {
@@ -291,23 +298,66 @@ struct GlobalAIAssistant: View {
     
     private func sendMessage() {
         guard !userMessage.isEmpty else { return }
-        
+
         let message = userMessage
         userMessage = ""
         isProcessing = true
-        
+
         aiAgent.sendMessage(message) { result in
             DispatchQueue.main.async {
                 isProcessing = false
                 switch result {
                 case .success:
                     // Message added to conversation history by the agent
+                    // Update HUD if active
+                    self.updateHUDChat()
                     break
                 case .failure(let error):
                     print("AI message error: \(error)")
                     // Could show error message in chat
                 }
             }
+        }
+    }
+
+    // MARK: - HUD Integration
+
+    private var shouldUseHUD: Bool {
+        return hudSettings.isEnabled && hudSettings.isCalibrated && hudService.isActive
+    }
+
+    private func updateHUDChat() {
+        guard shouldUseHUD else { return }
+
+        if showChatWindow {
+            // Convert AI conversation to ChatMessage format
+            let messages = aiAgent.conversationHistory.suffix(5).map { aiMessage in
+                ChatMessage(
+                    role: aiMessage.role == .user ? "user" : "assistant",
+                    content: aiMessage.content
+                )
+            }
+
+            let frontEdgeCenter = hudSettings.frontEdgeCenter
+            let angle = hudSettings.frontEdgeAngle
+
+            // Position chat perpendicular to front edge, away from TOME
+            let distance: CGFloat = 200
+            let perpAngle = angle - .pi / 2
+            let offsetX = cos(perpAngle) * distance
+            let offsetY = sin(perpAngle) * distance
+
+            let content = HUDContent(
+                type: .aiChat(messages: Array(messages)),
+                position: CGPoint(x: frontEdgeCenter.x + offsetX, y: frontEdgeCenter.y + offsetY),
+                size: CGSize(width: 700, height: 500),
+                rotation: angle
+            )
+
+            hudService.showContent(content)
+        } else {
+            // Hide HUD chat when toggled off
+            hudService.hideContent()
         }
     }
     

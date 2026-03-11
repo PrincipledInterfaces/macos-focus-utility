@@ -82,8 +82,9 @@ class UnifiedInboxService: ObservableObject {
     private var slackCheckTimer: Timer?
 
     init() {
-        startPeriodicRefresh()
-        refreshAllMessages()
+        // Disabled automatic refresh to prevent AppleScript dialogs
+        // startPeriodicRefresh()
+        // refreshAllMessages()
     }
 
     deinit {

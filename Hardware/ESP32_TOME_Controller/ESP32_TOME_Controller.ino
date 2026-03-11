@@ -43,7 +43,7 @@ int MOTOR_SPEED = 70;  // Microseconds between steps (adjustable)
 #define PHONE_BYPASS true  // Set to false for production
 
 // Debug mode - enable serial debugging
-#define DEBUG_MODE true  // Set to false to disable debug output
+#define DEBUG_MODE false  // Set to false to disable debug output
 
 // Phone Lift States
 enum LiftState {
