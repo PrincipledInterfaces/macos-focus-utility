@@ -385,7 +385,7 @@ struct HUDHomeScreenView: View {
 
     private let tickSpacing: CGFloat = 12
 
-    @State private var smoothRotation: Double = 0.0
+    @State private var tickPixelOffset: CGFloat = 0
 
     var body: some View {
         ZStack {
@@ -418,48 +418,39 @@ struct HUDHomeScreenView: View {
         }
         .frame(width: settings.displayWidth, height: settings.displayHeight)
         .onChange(of: dialRotation) { oldValue, newValue in
-            withAnimation(.linear(duration: 0.15)) {
-                smoothRotation = newValue
-            }
-        }
-        .onAppear {
-            smoothRotation = dialRotation
+            tickPixelOffset += CGFloat(newValue - oldValue) * 0.5
         }
     }
 
     private var tickStrip: some View {
-        let period: CGFloat = tickSpacing * 5  // 60px = one large-tick repeat cycle
+        Canvas { context, size in
+            let spacing = tickSpacing
+            // Start from the tick just before the left edge
+            let firstTick = Int(floor(tickPixelOffset / spacing))
+            var tickIndex = firstTick
+            var x = CGFloat(firstTick) * spacing - tickPixelOffset
 
-        // Render ticks symmetrically around center: tick at relIndex=0 (large) sits at frame center
-        let halfCount = Int(ceil(settings.frontEdgeWidth / (2 * tickSpacing))) + Int(period / tickSpacing) + 2
-        let totalCount = halfCount * 2 + 1
+            while x < size.width + spacing {
+                if x >= -spacing {
+                    let normalizedIndex = ((tickIndex % 5) + 5) % 5
+                    let isLarge = normalizedIndex == 0
+                    let tickH: CGFloat = isLarge ? 14 : 7
+                    let tickW: CGFloat = isLarge ? 2 : 1
+                    let opacity: Double = isLarge ? 0.7 : 0.4
 
-        // Wrap scroll within [0, period) for seamless infinite looping
-        let rawScroll = smoothRotation / 360.0 * period * 6
-        let wrapped = (rawScroll.truncatingRemainder(dividingBy: period) + period)
-            .truncatingRemainder(dividingBy: period)
-
-        return HStack(spacing: 0) {
-            ForEach(0..<totalCount, id: \.self) { i in
-                let rel = i - halfCount
-                tickMark(isLarge: rel % 5 == 0)
-                    .frame(width: tickSpacing)
+                    let rect = CGRect(
+                        x: x - tickW / 2,
+                        y: (size.height - tickH) / 2,
+                        width: tickW,
+                        height: tickH
+                    )
+                    context.fill(Path(rect), with: .color(.white.opacity(opacity)))
+                }
+                x += spacing
+                tickIndex += 1
             }
         }
-        .frame(width: CGFloat(totalCount) * tickSpacing)
-        .offset(x: -wrapped)
-        .frame(width: settings.frontEdgeWidth, alignment: .center)
-        .clipped()
-    }
-
-    private func tickMark(isLarge: Bool) -> some View {
-        let tickLength: CGFloat = isLarge ? 14 : 7
-        let tickWidth: CGFloat = isLarge ? 2 : 1
-        let tickOpacity: Double = isLarge ? 0.7 : 0.4
-
-        return Rectangle()
-            .fill(Color.white.opacity(tickOpacity))
-            .frame(width: tickWidth, height: tickLength)
+        .frame(width: settings.frontEdgeWidth, height: 20)
     }
 
     private var environmentLabel: some View {

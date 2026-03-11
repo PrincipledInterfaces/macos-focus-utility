@@ -218,9 +218,9 @@ class HardwareService: ObservableObject {
         options.c_oflag = tcflag_t(0)
         options.c_lflag = tcflag_t(0)
 
-        // Set read timeout
-        options.c_cc.16 = 1  // VMIN
-        options.c_cc.17 = 10 // VTIME (1 second timeout)
+        // Non-blocking reads — deadline-based retry in readResponse handles timing
+        options.c_cc.16 = 0  // VMIN = 0: return immediately even if no bytes
+        options.c_cc.17 = 0  // VTIME = 0: no timeout, pure non-blocking
 
         if tcsetattr(fd, TCSANOW, &options) != 0 {
             print("    ❌ Failed to set terminal attributes (errno: \(errno))")
@@ -308,84 +308,56 @@ class HardwareService: ObservableObject {
         }
     }
     
-    private func readResponse() -> (Response?, [UInt8])? {
-        guard let port = serialPort else {
-            print("        ❌ No serial port available for reading")
-            return nil
+    /// Read a single byte from the serial fd, retrying until deadline.
+    /// Returns nil if deadline passes with no byte.
+    private func readByteWithDeadline(fd: Int32, deadline: Date) -> UInt8? {
+        var byte: UInt8 = 0
+        while Date() < deadline {
+            let n = Darwin.read(fd, &byte, 1)
+            if n == 1 { return byte }
+            usleep(1_000) // 1ms back-off
+        }
+        return nil
+    }
+
+    /// Read a complete response packet with a deadline.
+    /// Scans for the 0xFF start byte (skipping any debug text / stale ACKs),
+    /// then reads the header, payload, and checksum.
+    private func readResponse(timeout: TimeInterval = 0.08) -> (Response?, [UInt8])? {
+        guard let port = serialPort else { return nil }
+        let fd = port.fileDescriptor
+        let deadline = Date().addingTimeInterval(timeout)
+
+        // Scan for 0xFF start byte — skip up to 100 bytes of garbage/debug
+        var foundStart = false
+        for _ in 0..<100 {
+            guard let byte = readByteWithDeadline(fd: fd, deadline: deadline) else { break }
+            if byte == 0xFF { foundStart = true; break }
+        }
+        guard foundStart else { return nil }
+
+        // Read response code + data length
+        guard let code = readByteWithDeadline(fd: fd, deadline: deadline),
+              let length = readByteWithDeadline(fd: fd, deadline: deadline) else { return nil }
+
+        // Read payload
+        var data = [UInt8]()
+        data.reserveCapacity(Int(length))
+        for _ in 0..<Int(length) {
+            guard let byte = readByteWithDeadline(fd: fd, deadline: deadline) else { return nil }
+            data.append(byte)
         }
 
-        do {
-            // Skip debug text and search for START_BYTE (0xFF)
-            // ESP32 DEBUG_MODE sends text like "LED: Env=0 Color=255,255,255"
-            var searchAttempts = 0
-            let maxSearchBytes = 500
-            var foundStart = false
+        // Read checksum
+        guard let receivedChecksum = readByteWithDeadline(fd: fd, deadline: deadline) else { return nil }
 
-            while !foundStart && searchAttempts < maxSearchBytes {
-                let byteData = try port.read(upToCount: 1)
-                guard let byte = byteData?.first else {
-                    // Timeout - no data available
-                    return nil
-                }
+        // Verify checksum
+        var calc: UInt8 = code ^ length
+        for b in data { calc ^= b }
+        guard calc == receivedChecksum else { return nil }
 
-                if byte == 0xFF {
-                    // Found the start byte!
-                    foundStart = true
-                } else {
-                    // Skip this byte (debug text or garbage)
-                    searchAttempts += 1
-                }
-            }
-
-            if !foundStart {
-                print("        ❌ Could not find START_BYTE after \(maxSearchBytes) bytes")
-                return nil
-            }
-
-            // Read command and length
-            let headerData = try port.read(upToCount: 2)
-            guard let header = headerData, header.count == 2 else {
-                print("        ❌ Incomplete header (expected 2 bytes, got \(headerData?.count ?? 0))")
-                return nil
-            }
-
-            let responseCode = header[0]
-            let dataLength = header[1]
-
-            // Read data and checksum
-            let remainingLength = Int(dataLength) + 1 // +1 for checksum
-            let remainingData = try port.read(upToCount: remainingLength)
-            guard let remaining = remainingData, remaining.count == remainingLength else {
-                print("        ❌ Incomplete packet (expected \(remainingLength) bytes, got \(remainingData?.count ?? 0))")
-                return nil
-            }
-
-            let data = Array(remaining.prefix(Int(dataLength)))
-            let receivedChecksum = remaining.last!
-
-            // Verify checksum
-            var calculatedChecksum: UInt8 = responseCode ^ dataLength
-            for byte in data {
-                calculatedChecksum ^= byte
-            }
-
-            guard calculatedChecksum == receivedChecksum else {
-                print("        ❌ Checksum mismatch (expected \(String(format: "%02X", calculatedChecksum)), got \(String(format: "%02X", receivedChecksum)))")
-                return nil
-            }
-
-            guard let response = Response(rawValue: responseCode) else {
-                print("        ❌ Unknown response code: \(String(format: "%02X", responseCode))")
-                return nil
-            }
-
-            return (response, data)
-
-        } catch {
-            print("        ❌ Failed to read response: \(error)")
-            handleConnectionError()
-            return nil
-        }
+        guard let response = Response(rawValue: code) else { return nil }
+        return (response, data)
     }
     
     private func sendPing() -> Bool {
@@ -395,9 +367,7 @@ class HardwareService: ObservableObject {
             return false
         }
 
-        usleep(50000) // Wait 50ms for response
-
-        if let (response, _) = readResponse(), response == .pong {
+        if let (response, _) = readResponse(timeout: 0.2), response == .pong {
             print("  ✅ Received pong response")
             return true
         }
@@ -441,8 +411,6 @@ class HardwareService: ObservableObject {
 
     private func updateEvents() {
         guard sendCommand(.getEvents) else { return }
-
-        usleep(5000) // 5ms — allows for USB serial round-trip latency
 
         if let (response, data) = readResponse(), response == .events {
             let eventCount = data.count / 3
@@ -524,9 +492,13 @@ class HardwareService: ObservableObject {
             }
         }()
 
-        // Dispatch onto the serial queue so this doesn't race with poll timer
+        // Dispatch onto the serial queue so this doesn't race with poll timer.
+        // Also consume the envAck so it doesn't pollute the next event read.
         serialQueue.async { [weak self] in
-            _ = self?.sendCommand(.setEnvironment, data: [envId])
+            guard let self else { return }
+            if self.sendCommand(.setEnvironment, data: [envId]) {
+                _ = self.readResponse() // consume envAck
+            }
         }
     }
     

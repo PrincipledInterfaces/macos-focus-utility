@@ -15,6 +15,8 @@ struct HomeView: View {
     @State private var doorwayExpansion: CGFloat = 1.0
     @State private var showSettings = false
     @State private var dialRotation: Double = 0
+    @State private var dialAccumulator: Int = 0
+    private let clicksPerSelection = 3
 
     private let environments: [TOMEEnvironment] = [.planning, .writerDesk, .workshop, .coffeeshop, .garden]
     private let hardwareService = HardwareService.shared
@@ -110,28 +112,30 @@ struct HomeView: View {
         hardwareService.onEvent(id: "homeView") { [self] event in
             switch event {
             case .encoderCW:
-                // Move selection right (with bounds checking)
-                if selectedIndex < environments.count - 1 {
-                    selectedIndex += 1
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        selectedEnvironment = environments[selectedIndex]
+                dialAccumulator += 1
+                dialRotation += 10.0
+                if dialAccumulator >= clicksPerSelection {
+                    dialAccumulator = 0
+                    if selectedIndex < environments.count - 1 {
+                        selectedIndex += 1
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            selectedEnvironment = environments[selectedIndex]
+                        }
                     }
                 }
-
-                // Update dial rotation for HUD
-                dialRotation += 10.0
 
             case .encoderCCW:
-                // Move selection left (with bounds checking)
-                if selectedIndex > 0 {
-                    selectedIndex -= 1
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        selectedEnvironment = environments[selectedIndex]
+                dialAccumulator -= 1
+                dialRotation -= 10.0
+                if dialAccumulator <= -clicksPerSelection {
+                    dialAccumulator = 0
+                    if selectedIndex > 0 {
+                        selectedIndex -= 1
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            selectedEnvironment = environments[selectedIndex]
+                        }
                     }
                 }
-
-                // Update dial rotation for HUD
-                dialRotation -= 10.0
 
             case .encoderClick:
                 // Trigger the selection
