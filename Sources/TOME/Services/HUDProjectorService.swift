@@ -137,6 +137,23 @@ class HUDProjectorService: ObservableObject {
         }
     }
 
+    // MARK: - Window Key Management
+
+    func makeWindowKey() {
+        DispatchQueue.main.async {
+            self.hudWindow?.makeKeyAndOrderFront(nil)
+        }
+    }
+
+    func resignWindowKey() {
+        DispatchQueue.main.async {
+            for window in NSApp.windows where window !== self.hudWindow && window.isVisible {
+                window.makeKeyAndOrderFront(nil)
+                return
+            }
+        }
+    }
+
     // MARK: - Calibration Mode
 
     func enterCalibrationMode() {
@@ -177,6 +194,7 @@ struct HUDContent: Equatable {
 
 enum HUDContentType {
     case aiChat(messages: [ChatMessage])
+    case aiChatInteractive(agent: GlobalAIAgent)
     case shockwave(color: Color, center: CGPoint)
     case environmentInfo(environment: TOMEEnvironment, details: String)
     case notification(title: String, message: String)
@@ -201,9 +219,12 @@ struct HUDProjectorView: View {
             // Render content if any
             if let content = service.currentContent {
                 contentView(for: content)
+                    .id(content.id)
+                    .transition(.opacity)
             }
         }
         .frame(width: settings.displayWidth, height: settings.displayHeight)
+        .animation(.easeInOut(duration: 0.35), value: service.currentContent)
         .onChange(of: service.currentContent) { _, newContent in
             if case .shockwave = newContent?.type {
                 shockwaveActive = true
@@ -224,6 +245,10 @@ struct HUDProjectorView: View {
                     .frame(width: content.size.width, height: content.size.height)
                     .rotationEffect(.radians(Double(content.rotation)))
                     .opacity(content.opacity)
+
+            case .aiChatInteractive(let agent):
+                HUDInteractiveChatView(agent: agent, settings: settings)
+                    .ignoresSafeArea(.all)
 
             case .shockwave(let color, let center):
                 SimpleGlowShockwave(center: center, isActive: shockwaveActive, color: color)
@@ -303,6 +328,167 @@ struct HUDAIChatView: View {
         .padding(24)
         .onAppear {
             appear = true
+        }
+    }
+}
+
+// MARK: - HUD Interactive Chat View
+
+struct HUDInteractiveChatView: View {
+    @ObservedObject var agent: GlobalAIAgent
+    let settings: HUDProjectorSettings
+
+    @State private var userMessage = ""
+    @State private var isProcessing = false
+    @FocusState private var inputFocused: Bool
+
+    var body: some View {
+        ZStack {
+            HUDContentPlane(
+                leftCorner: settings.frontLeftCorner,
+                rightCorner: settings.frontRightCorner,
+                displaySize: CGSize(width: settings.displayWidth, height: settings.displayHeight),
+                contentWidth: settings.frontEdgeWidth
+            ) {
+                chatPanel
+                    .frame(width: settings.frontEdgeWidth, height: 320)
+                    .clipped()
+            }
+        }
+        .frame(width: settings.displayWidth, height: settings.displayHeight)
+    }
+
+    private var chatPanel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack(spacing: 10) {
+                Image(systemName: "brain.head.profile")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(.white.opacity(0.85))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("AI Assistant")
+                        .font(.tomeBodyMedium())
+                        .foregroundColor(.white)
+                    Text("⌘A to close • Ask anything")
+                        .font(.tomeTiny())
+                        .foregroundColor(.white.opacity(0.5))
+                }
+                Spacer()
+                Button(action: {
+                    NotificationCenter.default.post(name: NSNotification.Name("ToggleAIChat"), object: nil)
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.white.opacity(0.6))
+                        .padding(6)
+                        .background(Circle().fill(.white.opacity(0.1)))
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(.ultraThinMaterial)
+
+            Divider().background(.white.opacity(0.1))
+
+            // Chat history
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 10) {
+                        ForEach(Array(agent.conversationHistory.enumerated()), id: \.offset) { index, message in
+                            projectorMessageView(message)
+                                .id(index)
+                        }
+                        if isProcessing {
+                            HStack {
+                                SineWaveThinking(color: .white)
+                                    .frame(width: 60, height: 24)
+                                    .padding(10)
+                                    .background(RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.05)))
+                                Spacer()
+                            }
+                            .id("thinking")
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 14)
+                }
+                .frame(height: 140)
+                .onChange(of: agent.conversationHistory.count) { _, _ in
+                    withAnimation { proxy.scrollTo(agent.conversationHistory.count - 1) }
+                }
+                .onChange(of: isProcessing) { _, newValue in
+                    if newValue { withAnimation { proxy.scrollTo("thinking") } }
+                }
+            }
+
+            Divider().background(.white.opacity(0.1))
+
+            // Input bar
+            HStack(spacing: 12) {
+                TextField("Ask anything...", text: $userMessage)
+                    .font(.tomeBody())
+                    .textFieldStyle(PlainTextFieldStyle())
+                    .focused($inputFocused)
+                    .onSubmit { sendMessage() }
+
+                Button(action: sendMessage) {
+                    Image(systemName: isProcessing ? "hourglass" : "paperplane.fill")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(isProcessing ? 0.4 : 0.9))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .disabled(isProcessing || userMessage.isEmpty)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(.black.opacity(0.4))
+        }
+        .background(.black.opacity(0.88))
+        .cornerRadius(18)
+        .shadow(color: .black.opacity(0.7), radius: 40)
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                inputFocused = true
+            }
+        }
+    }
+
+    private func projectorMessageView(_ message: AIMessage) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            if message.role == .user { Spacer() }
+            VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
+                Text(message.content)
+                    .font(.tomeBody())
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(message.role == .user ? .blue.opacity(0.25) : .white.opacity(0.1))
+                    )
+                    .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
+
+                if message.role == .assistant, let indicators = message.actionIndicators, !indicators.isEmpty {
+                    Text(indicators.joined(separator: " • "))
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.white.opacity(0.4))
+                }
+            }
+            if message.role == .assistant { Spacer() }
+        }
+    }
+
+    private func sendMessage() {
+        guard !userMessage.isEmpty else { return }
+        let message = userMessage
+        userMessage = ""
+        isProcessing = true
+        agent.sendMessage(message) { _ in
+            DispatchQueue.main.async {
+                isProcessing = false
+                inputFocused = true
+            }
         }
     }
 }
@@ -397,9 +583,11 @@ struct HUDHomeScreenView: View {
             ) {
                 // Centered container for all HUD elements
                 VStack(spacing: 0) {
-                    // Environment label at top, centered
+                    // Environment label at top, left-aligned
                     environmentLabel
                         .padding(.top, 15)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.leading, 8)
 
                     // Center indicator triangle pointing down at ticks
                     Triangle()

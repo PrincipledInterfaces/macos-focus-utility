@@ -70,9 +70,11 @@ CRGB sampleGradient(int pos, unsigned long offset,
   if (palCount == 0) return CRGB::Black;
   if (palCount == 1) return pal[0];
 
-  // Wrap position into [0, NUM_LEDS)
-  float t = fmod((float)(pos + offset), (float)NUM_LEDS) / (float)NUM_LEDS;
-  if (t < 0.0f) t += 1.0f;
+  // Reverse scroll direction: subtract offset instead of adding.
+  // Use unsigned arithmetic: (pos + NUM_LEDS - (offset % NUM_LEDS)) is always in [1, 117].
+  // fmod maps that to [0, NUM_LEDS), so t is always in [0, 1) with no negatives.
+  unsigned long wrapped = (unsigned long)pos + NUM_LEDS - (offset % NUM_LEDS);
+  float t = fmod((float)wrapped, (float)NUM_LEDS) / (float)NUM_LEDS;
 
   // Map to palette segment
   float scaled = t * (float)palCount;

@@ -48,10 +48,16 @@ struct GlobalAIAssistant: View {
                 .keyboardShortcut("a", modifiers: [.command])
             }
             
-            // Only show in-app chat window if HUD is NOT enabled
-            if showChatWindow && !shouldUseHUD {
-                aiChatWindow
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            if showChatWindow {
+                if shouldUseHUD {
+                    // HUD is active: chat window is on the projector.
+                    // Show only a minimal indicator on the main screen.
+                    hudChatIndicator
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                } else {
+                    aiChatWindow
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
             
             Spacer()
@@ -81,6 +87,10 @@ struct GlobalAIAssistant: View {
             if let observer = notificationObserver {
                 NotificationCenter.default.removeObserver(observer)
                 notificationObserver = nil
+            }
+            // Clear HUD chat if it was being shown
+            if showChatWindow && shouldUseHUD {
+                hudService.hideContent()
             }
         }
     }
@@ -182,6 +192,32 @@ struct GlobalAIAssistant: View {
         .shadow(color: .black.opacity(0.5), radius: 20)
     }
     
+    // Small indicator shown on the main screen while the full chat is on the projector.
+    private var hudChatIndicator: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(Color.green)
+                .frame(width: 7, height: 7)
+            Text("AI on projector")
+                .font(.tomeTiny())
+                .foregroundColor(.white.opacity(0.6))
+            Button(action: {
+                showChatWindow = false
+                updateHUDChat()
+            }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(.white.opacity(0.5))
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(.black.opacity(0.75))
+        .cornerRadius(8)
+        .shadow(color: .black.opacity(0.4), radius: 10)
+    }
+
     private var suggestionsList: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Suggestions")
@@ -306,15 +342,8 @@ struct GlobalAIAssistant: View {
         aiAgent.sendMessage(message) { result in
             DispatchQueue.main.async {
                 isProcessing = false
-                switch result {
-                case .success:
-                    // Message added to conversation history by the agent
-                    // Update HUD if active
-                    self.updateHUDChat()
-                    break
-                case .failure(let error):
+                if case .failure(let error) = result {
                     print("AI message error: \(error)")
-                    // Could show error message in chat
                 }
             }
         }
@@ -330,34 +359,16 @@ struct GlobalAIAssistant: View {
         guard shouldUseHUD else { return }
 
         if showChatWindow {
-            // Convert AI conversation to ChatMessage format
-            let messages = aiAgent.conversationHistory.suffix(5).map { aiMessage in
-                ChatMessage(
-                    role: aiMessage.role == .user ? "user" : "assistant",
-                    content: aiMessage.content
-                )
-            }
-
-            let frontEdgeCenter = hudSettings.frontEdgeCenter
-            let angle = hudSettings.frontEdgeAngle
-
-            // Position chat perpendicular to front edge, away from TOME
-            let distance: CGFloat = 200
-            let perpAngle = angle - .pi / 2
-            let offsetX = cos(perpAngle) * distance
-            let offsetY = sin(perpAngle) * distance
-
             let content = HUDContent(
-                type: .aiChat(messages: Array(messages)),
-                position: CGPoint(x: frontEdgeCenter.x + offsetX, y: frontEdgeCenter.y + offsetY),
-                size: CGSize(width: 700, height: 500),
-                rotation: angle
+                type: .aiChatInteractive(agent: aiAgent),
+                position: .zero,
+                size: CGSize(width: hudSettings.displayWidth, height: hudSettings.displayHeight)
             )
-
             hudService.showContent(content)
+            hudService.makeWindowKey()
         } else {
-            // Hide HUD chat when toggled off
             hudService.hideContent()
+            hudService.resignWindowKey()
         }
     }
     
